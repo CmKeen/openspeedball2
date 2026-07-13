@@ -15,5 +15,7 @@
   "pass_speed": 8,
   "shot_speed": 12,
   "throw_bounce_timer": 24,
-  "pickup_range": 12
+  "pickup_range": 12,
+  "fall_ticks": 25,
+  "slide_ticks": 12
 }
