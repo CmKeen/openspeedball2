@@ -18,6 +18,7 @@ def make_player(spd=128):
 def test_speed_bonus_threshold():
     assert speed_of(make_player(spd=128), CFG.physics) == 2
     assert speed_of(make_player(spd=200), CFG.physics) == 3
+    assert speed_of(make_player(spd=192), CFG.physics) == 3
 
 
 def test_movement_sets_velocity_and_dir():
@@ -44,3 +45,15 @@ def test_falling_player_ignores_input_and_recovers():
     assert p.falling_ticks == 0
     apply_movement(p, InputState(dir=6), CFG.physics)
     assert p.vel == Vec(-2, 0)        # control regained
+
+
+def test_sliding_player_ignores_input_and_recovers():
+    p = make_player()
+    p.dir = 2                          # facing East
+    p.sliding_ticks = 2
+    apply_movement(p, InputState(dir=6), CFG.physics)
+    assert p.vel == Vec(4, 0)          # sliding East, ignoring West input
+    apply_movement(p, InputState(dir=6), CFG.physics)
+    assert p.sliding_ticks == 0
+    apply_movement(p, InputState(dir=6), CFG.physics)
+    assert p.vel == Vec(-2, 0)         # control regained, moving West
