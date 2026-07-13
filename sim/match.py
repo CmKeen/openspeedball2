@@ -167,6 +167,11 @@ class Match:
             self._ai_possession_rolled = False
             self._prev_holder = self.ball.held_by
 
+    def tick_with_ai(self, human_inputs: dict[int, InputState]) -> None:
+        from sim.ai import compute_ai_inputs  # local import: no cycle at module load
+        ai = compute_ai_inputs(self, set(human_inputs))
+        self.tick(ai | human_inputs)
+
     def _resolve_action(self, p: PlayerSim, inp: InputState, phy: dict) -> None:
         holder = self.ball.held_by
         if holder is p:

@@ -17,5 +17,7 @@
   "throw_bounce_timer": 24,
   "pickup_range": 12,
   "fall_ticks": 25,
-  "slide_ticks": 12
+  "slide_ticks": 12,
+  "ai_shot_range": 260,
+  "ai_unmarked_radius": 40
 }
