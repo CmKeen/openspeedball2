@@ -1,0 +1,17 @@
+# extracted game assets — NEVER commit (see README asset policy)
+assets/
+# user's local reference material — not ours to redistribute
+Resources/
+Speedball 2 - WIP 02/
+Speedball 2 - WIP 02.zip
+# session scratch, must not be committed
+.superpowers/
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+*.egg-info/
+dist/
+build/
