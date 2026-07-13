@@ -119,6 +119,7 @@ class Match:
                             else self.players_team2)
             holder = team_players[4]  # central MID (x=320)
             self.ball.held_by = holder
+            self.ball.pos = holder.pos
 
         self.ball_speed_ref[0] = 0
         self.last_thrower_team = 0
@@ -174,7 +175,7 @@ class Match:
             return
         if inp.action_b and p.sliding_ticks == 0 and p.falling_ticks == 0:
             p.sliding_ticks = phy["slide_ticks"]
-        if holder is not None and holder.team != p.team:
+        if inp.action_a and holder is not None and holder.team != p.team:
             attempt_tackle(p, [holder], self.ball, self.rng, phy)
 
     @property

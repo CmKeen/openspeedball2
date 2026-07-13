@@ -57,3 +57,32 @@ def test_clock_counts_down_to_over():
     for _ in range(3):
         m.tick({})
     assert m.is_over
+
+
+def test_action_b_alone_does_not_attempt_tackle():
+    from sim.vec import Vec
+
+    m = Match(CFG, seed=(3, 4))
+    holder = m.players_team2[4]
+    tackler = m.players_team1[4]
+    holder.pos = Vec(320, 600)
+    m.ball.held_by = holder
+    tackler.pos = Vec(330, 600)
+
+    rng_before = (m.rng.a, m.rng.b)
+    m.tick({player_id(1, 4): InputState(action_b=True)})
+
+    assert (m.rng.a, m.rng.b) == rng_before
+    assert m.ball.held_by is holder
+
+
+def test_kickoff_possession_pins_ball_to_holder():
+    from sim.vec import Vec
+
+    m = Match(CFG, seed=(7, 7))
+    m.ball.pos = Vec(320, 10)
+    m.ball.held_by = None
+    m.tick({})
+
+    assert m.ball.held_by is not None
+    assert m.ball.pos == m.ball.held_by.pos
