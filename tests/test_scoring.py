@@ -48,3 +48,48 @@ def test_multiplier_expires():
     tick_multipliers(s)
     tick_multipliers(s)
     assert s.multiplier_team1_ticks == 0
+
+
+def test_right_bank_ejects_leftward():
+    s = ScoreState()
+    bank = CFG.arena["multiplier_banks"][1]
+    y = (bank["y_min"] + bank["y_max"]) // 2
+    ball = Ball(pos=Vec(bank["x_min"] + 2, y), vel=Vec(6, 0))
+    hit = check_multiplier_banks(ball, CFG.arena, CFG.scoring, s,
+                                 last_thrower_team=1)
+    assert hit
+    assert s.multiplier_team1_ticks == CFG.scoring["multiplier_duration_ticks"]
+    assert ball.vel.x < 0  # ejected back toward play
+
+
+def test_held_ball_ignores_bank():
+    s = ScoreState()
+    bank = CFG.arena["multiplier_banks"][0]
+    y = (bank["y_min"] + bank["y_max"]) // 2
+    ball = Ball(pos=Vec(bank["x_min"] + 10, y), vel=Vec(6, 0), held_by=object())
+    hit = check_multiplier_banks(ball, CFG.arena, CFG.scoring, s,
+                                 last_thrower_team=1)
+    assert not hit
+    assert s.multiplier_team1_ticks == 0
+
+
+def test_stationary_ball_ignores_bank():
+    s = ScoreState()
+    bank = CFG.arena["multiplier_banks"][0]
+    y = (bank["y_min"] + bank["y_max"]) // 2
+    ball = Ball(pos=Vec(bank["x_min"] + 10, y), vel=Vec(0, 0))
+    hit = check_multiplier_banks(ball, CFG.arena, CFG.scoring, s,
+                                 last_thrower_team=1)
+    assert not hit
+    assert s.multiplier_team1_ticks == 0
+
+
+def test_goal_boundary_cases():
+    # Test x boundaries (goal mouth inclusive)
+    assert check_goal(Ball(pos=Vec(272, 10)), CFG.arena) == 1
+    assert check_goal(Ball(pos=Vec(368, 10)), CFG.arena) == 1
+    assert check_goal(Ball(pos=Vec(271, 10)), CFG.arena) == 0
+    # Test y boundary (goal depth inclusive)
+    assert check_goal(Ball(pos=Vec(320, 16)), CFG.arena) == 1
+    # Test bottom goal
+    assert check_goal(Ball(pos=Vec(320, 1136)), CFG.arena) == 2
