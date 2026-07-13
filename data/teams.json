@@ -1,0 +1,68 @@
+{
+  "teams": [
+    {
+      "name": "Brutal Deluxe",
+      "players": [
+        { "name": "GK",   "position": 0, "agr": 128, "att": 128, "def": 128,
+          "spd": 128, "thr": 128, "pow": 128, "sta": 128, "int": 128,
+          "health": 255 },
+        { "name": "DEF1", "position": 1, "agr": 128, "att": 128, "def": 128,
+          "spd": 128, "thr": 128, "pow": 128, "sta": 128, "int": 128,
+          "health": 255 },
+        { "name": "DEF2", "position": 1, "agr": 128, "att": 128, "def": 128,
+          "spd": 128, "thr": 128, "pow": 128, "sta": 128, "int": 128,
+          "health": 255 },
+        { "name": "MID1", "position": 2, "agr": 128, "att": 128, "def": 128,
+          "spd": 128, "thr": 128, "pow": 128, "sta": 128, "int": 128,
+          "health": 255 },
+        { "name": "MID2", "position": 2, "agr": 128, "att": 128, "def": 128,
+          "spd": 128, "thr": 128, "pow": 128, "sta": 128, "int": 128,
+          "health": 255 },
+        { "name": "MID3", "position": 2, "agr": 128, "att": 128, "def": 128,
+          "spd": 128, "thr": 128, "pow": 128, "sta": 128, "int": 128,
+          "health": 255 },
+        { "name": "ATT1", "position": 3, "agr": 128, "att": 128, "def": 128,
+          "spd": 128, "thr": 128, "pow": 128, "sta": 128, "int": 128,
+          "health": 255 },
+        { "name": "ATT2", "position": 3, "agr": 128, "att": 128, "def": 128,
+          "spd": 128, "thr": 128, "pow": 128, "sta": 128, "int": 128,
+          "health": 255 },
+        { "name": "ATT3", "position": 3, "agr": 128, "att": 128, "def": 128,
+          "spd": 128, "thr": 128, "pow": 128, "sta": 128, "int": 128,
+          "health": 255 }
+      ]
+    },
+    {
+      "name": "Super Nashwan",
+      "players": [
+        { "name": "GK",   "position": 0, "agr": 160, "att": 160, "def": 160,
+          "spd": 160, "thr": 160, "pow": 160, "sta": 160, "int": 160,
+          "health": 255 },
+        { "name": "DEF1", "position": 1, "agr": 160, "att": 160, "def": 160,
+          "spd": 160, "thr": 160, "pow": 160, "sta": 160, "int": 160,
+          "health": 255 },
+        { "name": "DEF2", "position": 1, "agr": 160, "att": 160, "def": 160,
+          "spd": 160, "thr": 160, "pow": 160, "sta": 160, "int": 160,
+          "health": 255 },
+        { "name": "MID1", "position": 2, "agr": 160, "att": 160, "def": 160,
+          "spd": 160, "thr": 160, "pow": 160, "sta": 160, "int": 160,
+          "health": 255 },
+        { "name": "MID2", "position": 2, "agr": 160, "att": 160, "def": 160,
+          "spd": 160, "thr": 160, "pow": 160, "sta": 160, "int": 160,
+          "health": 255 },
+        { "name": "MID3", "position": 2, "agr": 160, "att": 160, "def": 160,
+          "spd": 160, "thr": 160, "pow": 160, "sta": 160, "int": 160,
+          "health": 255 },
+        { "name": "ATT1", "position": 3, "agr": 160, "att": 160, "def": 160,
+          "spd": 160, "thr": 160, "pow": 160, "sta": 160, "int": 160,
+          "health": 255 },
+        { "name": "ATT2", "position": 3, "agr": 160, "att": 160, "def": 160,
+          "spd": 160, "thr": 160, "pow": 160, "sta": 160, "int": 160,
+          "health": 255 },
+        { "name": "ATT3", "position": 3, "agr": 160, "att": 160, "def": 160,
+          "spd": 160, "thr": 160, "pow": 160, "sta": 160, "int": 160,
+          "health": 255 }
+      ]
+    }
+  ]
+}

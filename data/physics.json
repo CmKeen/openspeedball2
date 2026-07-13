@@ -1,0 +1,19 @@
+{
+  "ball_friction_per_tick": 1,
+  "ball_no_friction_y_min": 48,
+  "ball_no_friction_y_max": 1104,
+  "player_base_speed": 2,
+  "player_speed_bonus_threshold": 192,
+  "tackle_range": 30,
+  "tackle_knockback_speed": 3,
+  "tackle_knockback_speed_sliding": 4,
+  "tackle_def_malus_by_delta_dir": [64, 48, 32, 16, 0, 16, 32, 48],
+  "tackle_malus_sliding": 32,
+  "tackle_malus_jumping": 32,
+  "goalkeeper_def_multiplier_num": 3,
+  "goalkeeper_def_multiplier_den": 2,
+  "pass_speed": 8,
+  "shot_speed": 12,
+  "throw_bounce_timer": 24,
+  "pickup_range": 12
+}
