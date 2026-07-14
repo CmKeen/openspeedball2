@@ -20,6 +20,8 @@ class ScoreState:
 
 
 def check_goal(ball: Ball, arena: dict) -> int:
+    if ball.held_by is not None:
+        return 0  # carrying the ball across the line does not score
     if not (arena["goal_mouth_x_min"] <= ball.pos.x <= arena["goal_mouth_x_max"]):
         return 0
     if ball.pos.y <= arena["goal_depth"]:
@@ -50,7 +52,10 @@ def check_multiplier_banks(ball: Ball, arena: dict, scoring: dict,
                 state.multiplier_team1_ticks = scoring["multiplier_duration_ticks"]
             elif last_thrower_team == 2:
                 state.multiplier_team2_ticks = scoring["multiplier_duration_ticks"]
-            eject = 4 if bank["x_min"] == 0 else -4
+            # Eject toward the pitch center: banks hugging the left wall
+            # (right edge at or left of mid-width) push the ball rightward,
+            # right-wall banks push it leftward.
+            eject = 4 if bank["x_max"] <= arena["width"] // 2 else -4
             ball.pos = Vec(bank["x_max"] + 8 if eject > 0 else bank["x_min"] - 8,
                            ball.pos.y)
             ball.vel = Vec(eject, 0)

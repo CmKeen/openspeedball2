@@ -10,20 +10,27 @@ from sim.vec import DIR_VECTORS, Vec
 def try_pickup(ball: Ball, p: PlayerSim, physics: dict) -> bool:
     if ball.held_by is not None or p.falling_ticks > 0:
         return False
+    # The thrower can't re-catch their own live throw (same-tick release),
+    # but teammates and opponents remain free to intercept/catch it.
+    if p is ball.last_thrower and ball.bounce_timer > 0:
+        return False
     if ball.pos.chebyshev(p.pos) > physics["pickup_range"]:
         return False
     ball.held_by = p
     ball.vel = Vec(0, 0)
     ball.bounce_timer = 0
+    ball.last_thrower = None
     return True
 
 
 def throw(ball: Ball, p: PlayerSim, physics: dict, shot: bool,
           ball_speed_ref: list[int]) -> None:
-    assert ball.held_by is p
+    if ball.held_by is not p:
+        raise ValueError("throw() requires the thrower to hold the ball")
     speed = physics["shot_speed"] if shot else physics["pass_speed"]
     step = DIR_VECTORS[p.dir]
     ball.held_by = None
+    ball.last_thrower = p
     ball.dir = p.dir
     ball.vel = Vec(step.x * speed, step.y * speed)
     ball.bounce_timer = physics["throw_bounce_timer"]
@@ -68,6 +75,8 @@ def attempt_tackle(attacker: PlayerSim, defenders: list[PlayerSim],
         step = DIR_VECTORS[attacker.dir]
         dfn.falling_ticks = physics["fall_ticks"]
         dfn.knock_vel = Vec(step.x * speed, step.y * speed)
+        # Facing after a knockdown mirrors the tackler's facing, matching
+        # the reference implementation's tackle knockdown behavior.
         dfn.dir = attacker.dir
         if ball.held_by is dfn:
             ball.held_by = None if attacker.falling_ticks > 0 else attacker

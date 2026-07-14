@@ -86,3 +86,44 @@ def test_kickoff_possession_pins_ball_to_holder():
 
     assert m.ball.held_by is not None
     assert m.ball.pos == m.ball.held_by.pos
+
+
+def test_throw_escapes_thrower():
+    m = Match(CFG, seed=(11, 22))
+    thrower = m.players_team1[4]
+    m.ball.held_by = thrower
+    m.ball.pos = thrower.pos
+    m._prev_holder = thrower
+    thrower.dir = 0  # facing open field, away from any wall
+
+    m.tick({player_id(1, 4): InputState(dir=thrower.dir, action_a=True)})
+
+    assert m.ball.held_by is not thrower
+    assert m.ball.held_by is None
+
+    positions = []
+    for _ in range(5):
+        m.tick({})
+        positions.append(m.ball.pos)
+    assert len(set(positions)) > 1
+
+
+def test_carried_ball_does_not_score_thrown_ball_does():
+    from sim.vec import Vec
+
+    m = Match(CFG, seed=(5, 6))
+    holder = m.players_team1[4]
+    holder.pos = Vec(320, 10)
+    m.ball.held_by = holder
+    m.ball.pos = holder.pos
+
+    before1, before2 = m.score.score_team1, m.score.score_team2
+    m.tick({})
+    assert (m.score.score_team1, m.score.score_team2) == (before1, before2)
+
+    m2 = Match(CFG, seed=(5, 6))
+    m2.ball.held_by = None
+    m2.ball.pos = Vec(320, 10)
+    m2.ball.vel = Vec(0, -4)
+    m2.tick({})
+    assert m2.score.score_team1 == CFG.scoring["goal_points"]

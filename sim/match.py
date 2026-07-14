@@ -113,6 +113,7 @@ class Match:
         self.ball.bounce_timer = 0
         self.ball.held_by = None
         self.ball.in_bank = False
+        self.ball.last_thrower = None
 
         if possession_team in (1, 2):
             team_players = (self.players_team1 if possession_team == 1
@@ -168,6 +169,9 @@ class Match:
             self._prev_holder = self.ball.held_by
 
     def tick_with_ai(self, human_inputs: dict[int, InputState]) -> None:
+        # Lockstep invariant: the AI must produce identical inputs on every
+        # peer for a given match state, since it consumes match rng here
+        # (same stream all peers replay) rather than any local-only source.
         from sim.ai import compute_ai_inputs  # local import: no cycle at module load
         ai = compute_ai_inputs(self, set(human_inputs))
         self.tick(ai | human_inputs)
@@ -198,11 +202,21 @@ class Match:
         for v in (self.ball.pos.x, self.ball.pos.y,
                   self.ball.vel.x, self.ball.vel.y, self.ball.bounce_timer):
             mix(v)
+        holder = self.ball.held_by
+        mix(player_id(holder.team, holder.index) if holder is not None else 0)
+        mix(int(self.ball.in_bank))
         for p in self.all_players():
             for v in (p.pos.x, p.pos.y, p.vel.x, p.vel.y, p.dir,
-                      p.falling_ticks, p.stats["health"]):
+                      p.falling_ticks, p.sliding_ticks,
+                      p.knock_vel.x, p.knock_vel.y):
                 mix(v)
+            for key in ("health", "agr", "att", "def", "spd",
+                       "thr", "pow", "sta", "int"):
+                mix(p.stats[key])
         for v in (self.score.score_team1, self.score.score_team2,
-                  self.rng.a, self.rng.b):
+                  self.score.multiplier_team1_ticks,
+                  self.score.multiplier_team2_ticks,
+                  self.rng.a, self.rng.b,
+                  self.clock_ticks, self.last_thrower_team):
             mix(v)
         return acc

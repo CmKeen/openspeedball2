@@ -26,6 +26,11 @@ class Ball(Entity):
     bounce_timer: int = 0
     held_by: object | None = None
     in_bank: bool = False
+    # Player who last threw this ball while it's still "live" (bounce_timer
+    # > 0). Prevents the thrower from instantly re-picking-up their own
+    # throw the same tick it's released; reset to None on kickoff and on
+    # any successful pickup.
+    last_thrower: object | None = None
 
 
 def _axis(value: int, vel: int, low: int, high: int) -> tuple[int, int, bool]:
