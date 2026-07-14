@@ -58,8 +58,8 @@ here (see Decisions).
   {"pos": [320, 1056], "radius": 16}
 ],
 "electrobounces": [
-  {"pos": [16, 480],  "wall": "left"},
-  {"pos": [624, 480], "wall": "right"}
+  {"pos": [16, 560],  "wall": "left"},
+  {"pos": [624, 560], "wall": "right"}
 ],
 "star_banks": [
   {"team": 1, "x_min": 0,   "x_max": 24,  "y_min": 320, "y_max": 480, "count": 5},
