@@ -72,6 +72,10 @@ def decide_carry(match: Match, p: PlayerSim) -> InputState:
     phy = match.cfg.physics
     goal_center = _opp_goal_center(match, p)
 
+    dist = p.pos.chebyshev(goal_center)
+    if dist > phy["ai_shot_range"]:
+        return _move_to(p, goal_center)
+
     if not match._ai_possession_rolled:
         roll = match.rng.next_byte()
         match._ai_possession_rolled = True
@@ -91,10 +95,7 @@ def decide_carry(match: Match, p: PlayerSim) -> InputState:
                 target_p = min(candidates, key=lambda q: _sort_key(q, goal_center))
                 return InputState(dir=dir_towards(p.pos, target_p.pos), action_a=True)
 
-    dist = p.pos.chebyshev(goal_center)
-    if dist <= phy["ai_shot_range"]:
-        return InputState(dir=dir_towards(p.pos, goal_center), action_b=True)
-    return _move_to(p, goal_center)
+    return InputState(dir=dir_towards(p.pos, goal_center), action_b=True)
 
 
 def decide_defend(match: Match, p: PlayerSim, holder: PlayerSim) -> InputState:

@@ -3,6 +3,7 @@ from pathlib import Path
 from sim.ai import compute_ai_inputs
 from sim.config import load_config
 from sim.match import Match, player_id
+from sim.vec import Vec
 
 CFG = load_config(Path(__file__).resolve().parent.parent / "data")
 
@@ -41,3 +42,24 @@ def test_ai_chases_free_ball():
         m.tick_with_ai({})
     after = min(p.pos.chebyshev(m.ball.pos) for p in m.players_team2)
     assert after <= before
+
+
+def test_carry_roll_fires_only_in_shot_range():
+    m = Match(CFG, seed=(11, 11))
+    carrier = m.players_team1[4]
+    carrier.pos = Vec(320, 900)
+    m.ball.held_by = carrier
+    m._prev_holder = m.ball.held_by
+    m._ai_possession_rolled = False
+
+    state_before = (m.rng.a, m.rng.b)
+    compute_ai_inputs(m, set())
+    assert (m.rng.a, m.rng.b) == state_before
+    assert m._ai_possession_rolled is False
+
+    carrier.pos = Vec(320, 200)
+    inputs = compute_ai_inputs(m, set())
+    assert (m.rng.a, m.rng.b) != state_before
+    assert m._ai_possession_rolled is True
+    carrier_input = inputs[player_id(carrier.team, carrier.index)]
+    assert carrier_input.action_a or carrier_input.action_b
