@@ -49,7 +49,8 @@ v1 milestone (one playable match, human vs CPU) is complete: 53 headless
 tests passing, sim core verified render-free and deterministic. A
 headless smoke run (`Match.tick_with_ai()` for 2000 ticks under
 `SDL_VIDEODRIVER=dummy`, no human input) exercises movement, pickup,
-tackling, throwing, and scoring end-to-end without exceptions; a human
+tackling, and throwing end-to-end without exceptions (a companion run
+with scripted human inputs also produced a thrown goal); a human
 has not yet interactively verified feel/controls. See
 `docs/dod-audit.md` for the definition-of-done audit summary.
 
