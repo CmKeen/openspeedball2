@@ -35,7 +35,9 @@ graphics.
 
 ## Controls
 
-Arrows/WASD: move · Space: pass/tackle · Left Shift: shoot/slide
+Arrows/WASD: move · Space: the single action button, like the original —
+throw (in the direction you're facing) when holding the ball, sliding
+tackle when not.
 
 ## Credits & prior work
 

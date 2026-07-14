@@ -27,13 +27,17 @@ def main() -> None:
     running = True
     while running and not match.is_over:
         acc += clock.tick(250)
+        space_edge = False
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
+                space_edge = True  # edge-triggered: taps between frames still fire
         while acc >= TICK_MS:
             acc -= TICK_MS
             pid = pick_controlled_player(match)
-            match.tick_with_ai({pid: read_input()})
+            match.tick_with_ai({pid: read_input(space_edge)})
+            space_edge = False  # consumed by the first sim tick of this frame
         draw_frame(screen, match, pick_controlled_player(match), font)
         draw_hud(screen, match, font)
         pygame.display.flip()

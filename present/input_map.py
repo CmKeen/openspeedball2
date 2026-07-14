@@ -1,5 +1,15 @@
 """Keyboard -> InputState. Human controls the team-1 player nearest the ball
-(original 'auto-switch' behavior); manual switch on Tab."""
+(original 'auto-switch' behavior).
+
+Single-button controls, like the original game: Space is the one action —
+throw when holding the ball, sliding tackle when not. It fires on the
+key-down edge (passed in by the app's event loop) and deliberately withholds
+the movement direction on that tick (dir=None), so the sim's persistent
+facing decides where the throw/slide goes. Sampling the raw key state at the
+press instant is what broke diagonal passes: three-key chords (two arrows +
+Space) commonly drop an arrow (keyboard ghosting / key roll), collapsing the
+direction to a cardinal exactly when it mattered.
+"""
 from __future__ import annotations
 
 import pygame
@@ -13,14 +23,18 @@ _DIR_FROM_KEYS = {
 }
 
 
-def read_input() -> InputState | None:
+def compute_input(dx: int, dy: int, action_edge: bool) -> InputState:
+    """Pure mapping from movement axes (-1/0/1 each) and the action edge."""
+    if action_edge:
+        return InputState(dir=None, action_a=True, action_b=True)
+    return InputState(dir=_DIR_FROM_KEYS.get((dx, dy)))
+
+
+def read_input(action_edge: bool) -> InputState:
     keys = pygame.key.get_pressed()
     dx = (keys[pygame.K_RIGHT] or keys[pygame.K_d]) - (keys[pygame.K_LEFT] or keys[pygame.K_a])
     dy = (keys[pygame.K_DOWN] or keys[pygame.K_s]) - (keys[pygame.K_UP] or keys[pygame.K_w])
-    d = _DIR_FROM_KEYS.get((dx, dy))
-    return InputState(dir=d,
-                      action_a=keys[pygame.K_SPACE],
-                      action_b=keys[pygame.K_LSHIFT])
+    return compute_input(dx, dy, action_edge)
 
 
 def pick_controlled_player(match: Match) -> int:
