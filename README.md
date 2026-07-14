@@ -32,6 +32,17 @@ graphics.
     pip install -e .[dev]
     python -m present.app          # play
     python -m pytest               # headless sim tests
+   python -m tools.frame_trace trace-sim --scenario ai-smoke --output sim_trace.jsonl
+
+## Frame Validation Harness
+
+Use `python -m tools.frame_trace trace-sim ...` to emit deterministic JSONL
+frame traces from the packaged sim, `python -m tools.frame_trace compare ...`
+to diff two traces, and `python -m tools.frame_trace prepare-ref ...` to stage
+scenario metadata plus a sim trace for a local REF build at
+`Speedball 2 - WIP 02/bin/Speedball 2.exe`. The harness is ready in this repo;
+the REF executable/export side was not available in this environment, so only
+the sim/comparison half was exercised here.
 
 ## Controls
 
@@ -47,7 +58,7 @@ and Kroah's Speedball 2 Remake research (bringerp.free.fr).
 
 ## Status
 
-v1 milestone (one playable match, human vs CPU) is complete: 53 headless
+v1 milestone (one playable match, human vs CPU) is complete: 65 headless
 tests passing, sim core verified render-free and deterministic. A
 headless smoke run (`Match.tick_with_ai()` for 2000 ticks under
 `SDL_VIDEODRIVER=dummy`, no human input) exercises movement, pickup,

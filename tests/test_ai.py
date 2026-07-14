@@ -1,9 +1,11 @@
 from pathlib import Path
 
-from sim.ai import compute_ai_inputs
+from sim.ai import (compute_ai_inputs, decide_chase, decide_goalkeeper,
+                    decide_team_support, _attacker_lookup_target,
+                    _choose_pass_target)
 from sim.config import load_config
 from sim.match import Match, player_id
-from sim.vec import Vec
+from sim.vec import Vec, dir_towards
 
 CFG = load_config(Path(__file__).resolve().parent.parent / "data")
 
@@ -42,6 +44,127 @@ def test_ai_chases_free_ball():
         m.tick_with_ai({})
     after = min(p.pos.chebyshev(m.ball.pos) for p in m.players_team2)
     assert after <= before
+
+
+def test_chase_targets_predicted_ball_position_from_amiga_re():
+    m = Match(CFG, seed=(7, 7))
+    chaser = m.players_team1[4]
+    chaser.pos = Vec(320, 800)
+    chaser.stats["int"] = 160
+
+    m.ball.held_by = None
+    m.ball.pos = Vec(300, 700)
+    m.ball.vel = Vec(20, 0)
+
+    chase = decide_chase(m, chaser)
+
+    assert chase.dir == 1
+
+
+def test_goalkeeper_uses_amiga_predicted_intercept_lane():
+    m = Match(CFG, seed=(8, 8))
+    goalie = m.players_team1[0]
+    goalie.pos = Vec(320, goalie.home.y)
+    goalie.stats["int"] = 160
+
+    m.ball.held_by = None
+    m.ball.pos = Vec(320, 900)
+    m.ball.vel = Vec(20, 60)
+
+    inp = decide_goalkeeper(m, goalie)
+
+    assert inp.dir == 2
+
+
+def test_pass_target_respects_amiga_observe_distance_and_group_thresholds():
+    m = Match(CFG, seed=(9, 9))
+    carrier = m.players_team1[4]
+    carrier.pos = Vec(320, 200)
+    carrier.stats["int"] = 120
+
+    winger = m.players_team1[6]
+    winger.pos = Vec(120, 80)
+
+    midfielder = m.players_team1[3]
+    midfielder.pos = Vec(360, 120)
+
+    target = _choose_pass_target(m, carrier, Vec(320, 16))
+
+    assert target is midfielder
+
+
+def test_defender_support_anchors_on_own_goalkeeper_from_amiga_ai():
+    m = Match(CFG, seed=(10, 10))
+    holder = m.players_team1[7]
+    holder.pos = Vec(320, 200)
+
+    supporting_defender = m.players_team1[2]
+    supporting_defender.pos = Vec(440, 920)
+
+    inp = decide_team_support(m, supporting_defender, holder)
+
+    goalie = m.players_team1[0]
+    assert inp.dir == dir_towards(supporting_defender.pos, goalie.pos)
+
+
+def test_attacker_lookup_uses_recovered_tail_column_from_amiga_table():
+    m = Match(CFG, seed=(12, 12))
+    cfwd = m.players_team1[7]
+
+    holder = m.players_team1[6]
+    holder.pos = Vec(300, 40)
+    holder.vel = Vec(0, 0)
+
+    target = _attacker_lookup_target(m, cfwd, holder)
+
+    assert target == Vec(352, 96)
+
+
+def test_attacker_lookup_uses_holders_predicted_position():
+    m = Match(CFG, seed=(13, 13))
+    cfwd = m.players_team1[7]
+
+    holder = m.players_team1[6]
+    holder.pos = Vec(100, 40)
+    holder.vel = Vec(50, 0)
+
+    target = _attacker_lookup_target(m, cfwd, holder)
+
+    assert target == Vec(240, 144)
+
+
+def test_goalkeeper_rushes_nearby_loose_ball():
+    m = Match(CFG, seed=(14, 14))
+    goalie = m.players_team1[0]
+    goalie.pos = Vec(320, goalie.home.y)
+
+    m.ball.held_by = None
+    m.ball.pos = Vec(340, goalie.home.y - 40)
+    m.ball.vel = Vec(0, 0)
+
+    inp = decide_goalkeeper(m, goalie)
+
+    assert inp.dir == dir_towards(goalie.pos, m.ball.pos)
+
+
+def test_midfielder_pass_threshold_cascades_down_to_defenders():
+    m = Match(CFG, seed=(15, 15))
+    for opponent in m.players_team2:
+        opponent.pos = Vec(0, 0)
+
+    passer = m.players_team1[3]
+    passer.pos = Vec(320, 300)
+
+    defender = m.players_team1[1]
+    defender.pos = Vec(300, 150)
+
+    for teammate in (m.players_team1[4], m.players_team1[5],
+                     m.players_team1[6], m.players_team1[7], m.players_team1[8]):
+        teammate.pos = Vec(320, 1000)
+
+    target = _choose_pass_target(m, passer, Vec(320, 16))
+
+    assert target is defender
 
 
 def test_carry_roll_fires_only_in_shot_range():
