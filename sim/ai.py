@@ -44,14 +44,17 @@ def _ai_group(match: Match, p: PlayerSim) -> int:
 
 
 def _pass_thresholds(match: Match, p: PlayerSim) -> tuple[int, ...]:
+    # Amiga REF sub_DF2E() (attackers) / sub_DBE8() (everyone else): the
+    # cascade width differs by group -- attackers and defenders each try two
+    # thresholds, midfielders cascade one level further to a third.
     group = _ai_group(match, p)
     if group >= 3:
         return (3, 2)
     if group == 2:
-        return (3, 2)
+        return (3, 2, 1)
     if group == 1:
         return (2, 1)
-    return (2, 1, 0)
+    return (2, 1)
 
 
 def _support_anchor(match: Match, team: int) -> PlayerSim | None:
@@ -60,6 +63,17 @@ def _support_anchor(match: Match, team: int) -> PlayerSim | None:
 
 
 def _choose_pass_target(match: Match, p: PlayerSim, goal_center: Vec) -> PlayerSim | None:
+    # Amiga REF sub_DBE8()/sub_DF2E(): the group-threshold cascade and the
+    # `int * 2` observe distance (sub_DE7E_CalcDistanceUnkFromInt) are ported
+    # faithfully. The candidate-selection criteria below are a deliberate
+    # approximation, not a byte-exact port: the REF picks the *closest-to-
+    # the-ball* eligible teammate, filtered by whether the candidate's
+    # direction back to the passer matches either of the two nearest
+    # opponents' marking directions (sub_E05C) -- a per-player "who's
+    # currently marking me" direction pair this sim doesn't track. This
+    # instead picks the teammate closest to the opponent's goal among those
+    # not within a fixed unmarked radius. Revisit if defenders and
+    # midfielders start passing to worse-supported targets than the REF.
     phy = match.cfg.physics
     observe_distance = p.stats["int"] * 2
 
@@ -94,9 +108,11 @@ def _reflect_axis(value: int, low: int, high: int) -> int:
 
 
 def _predicted_target(match: Match, p: PlayerSim, pos: Vec, vel: Vec) -> Vec:
-    # Amiga REF target_predicted_position(): intelligence buckets select a
-    # left-shift applied to target velocity, then the point is reflected back
-    # inside the playable pitch rectangle.
+    # Amiga REF sub_F364(): intelligence buckets select a left-shift applied
+    # to target velocity, then the point is reflected back inside the
+    # playable pitch rectangle via sub_F3A2_sub_F3C4(). Verified against the
+    # decompiled source: formula and reflection boundaries (32/608, 32/1120)
+    # match byte-for-byte once translated from the fixed 640x1152 arena.
     int_bucket = max(0, min((p.stats["int"] - 100) // 10, len(_POSITION_LOOKAHEAD_TABLE) - 1))
     lookahead_shift = _POSITION_LOOKAHEAD_TABLE[int_bucket]
     target = Vec(

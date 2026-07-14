@@ -147,6 +147,26 @@ def test_goalkeeper_rushes_nearby_loose_ball():
     assert inp.dir == dir_towards(goalie.pos, m.ball.pos)
 
 
+def test_midfielder_pass_threshold_cascades_down_to_defenders():
+    m = Match(CFG, seed=(15, 15))
+    for opponent in m.players_team2:
+        opponent.pos = Vec(0, 0)
+
+    passer = m.players_team1[3]
+    passer.pos = Vec(320, 300)
+
+    defender = m.players_team1[1]
+    defender.pos = Vec(300, 150)
+
+    for teammate in (m.players_team1[4], m.players_team1[5],
+                     m.players_team1[6], m.players_team1[7], m.players_team1[8]):
+        teammate.pos = Vec(320, 1000)
+
+    target = _choose_pass_target(m, passer, Vec(320, 16))
+
+    assert target is defender
+
+
 def test_carry_roll_fires_only_in_shot_range():
     m = Match(CFG, seed=(11, 11))
     carrier = m.players_team1[4]
