@@ -3,7 +3,8 @@ from pathlib import Path
 from sim.config import load_config
 from sim.entities import Ball
 from sim.furniture import (FurnitureState, check_bounce_domes,
-                           check_electrobounces, tick_electrobounce_flash)
+                           check_electrobounces, check_star_banks,
+                           tick_electrobounce_flash)
 from sim.scoring import ScoreState
 from sim.vec import Vec
 
@@ -82,3 +83,68 @@ def test_tick_electrobounce_flash_counts_down_and_floors_at_zero():
     assert furniture.electrobounce_flash_ticks == 0
     tick_electrobounce_flash(furniture)
     assert furniture.electrobounce_flash_ticks == 0
+
+
+def test_star_bank_lights_own_star_once():
+    bank = CFG.arena["star_banks"][0]  # team 1, left wall
+    y = bank["y_min"] + 1
+    furniture = FurnitureState()
+    score = ScoreState()
+    ball = Ball(pos=Vec(bank["x_max"] - 2, y), vel=Vec(-4, 0))
+    hit = check_star_banks(ball, CFG.arena, CFG.scoring, furniture, score,
+                           last_thrower_team=1)
+    assert hit
+    assert furniture.lit_stars_team1 == 0b00001
+    assert score.score_team1 == CFG.scoring["star_bonus_points"]
+
+    ball2 = Ball(pos=Vec(bank["x_max"] - 2, y), vel=Vec(-4, 0))
+    check_star_banks(ball2, CFG.arena, CFG.scoring, furniture, score,
+                     last_thrower_team=1)
+    assert score.score_team1 == CFG.scoring["star_bonus_points"]  # not re-awarded
+
+
+def test_star_bank_knocks_out_opponent_lit_star():
+    bank = CFG.arena["star_banks"][0]  # team 1
+    y = bank["y_min"] + 1
+    furniture = FurnitureState()
+    score = ScoreState()
+    lit = Ball(pos=Vec(bank["x_max"] - 2, y), vel=Vec(-4, 0))
+    check_star_banks(lit, CFG.arena, CFG.scoring, furniture, score,
+                     last_thrower_team=1)
+    assert score.score_team1 == CFG.scoring["star_bonus_points"]
+
+    knockout = Ball(pos=Vec(bank["x_max"] - 2, y), vel=Vec(-4, 0))
+    hit = check_star_banks(knockout, CFG.arena, CFG.scoring, furniture, score,
+                           last_thrower_team=2)
+    assert hit
+    assert furniture.lit_stars_team1 == 0
+    assert score.score_team1 == 0
+
+
+def test_star_bank_full_row_awards_bonus_and_clears():
+    bank = CFG.arena["star_banks"][0]  # team 1
+    band_height = (bank["y_max"] - bank["y_min"]) // bank["count"]
+    furniture = FurnitureState()
+    score = ScoreState()
+    for i in range(bank["count"]):
+        y = bank["y_min"] + i * band_height + 1
+        ball = Ball(pos=Vec(bank["x_max"] - 2, y), vel=Vec(-4, 0))
+        check_star_banks(ball, CFG.arena, CFG.scoring, furniture, score,
+                         last_thrower_team=1)
+    assert furniture.lit_stars_team1 == 0
+    expected = (CFG.scoring["star_bonus_points"] * bank["count"]
+               + CFG.scoring["star_row_bonus_points"])
+    assert score.score_team1 == expected
+
+
+def test_star_bank_ignores_held_or_stationary_ball():
+    bank = CFG.arena["star_banks"][0]
+    y = bank["y_min"] + 1
+    furniture = FurnitureState()
+    score = ScoreState()
+    held = Ball(pos=Vec(bank["x_max"] - 2, y), vel=Vec(-4, 0), held_by=object())
+    assert not check_star_banks(held, CFG.arena, CFG.scoring, furniture, score,
+                                last_thrower_team=1)
+    stationary = Ball(pos=Vec(bank["x_max"] - 2, y), vel=Vec(0, 0))
+    assert not check_star_banks(stationary, CFG.arena, CFG.scoring, furniture,
+                                score, last_thrower_team=1)
