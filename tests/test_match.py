@@ -127,3 +127,51 @@ def test_carried_ball_does_not_score_thrown_ball_does():
     m2.ball.vel = Vec(0, -4)
     m2.tick({})
     assert m2.score.score_team1 == CFG.scoring["goal_points"]
+
+
+def test_bounce_dome_integration_via_tick():
+    m = Match(CFG, seed=(5, 5))
+    dome = CFG.arena["bounce_domes"][0]
+    from sim.vec import Vec
+    m.ball.pos = Vec(dome["pos"][0], dome["pos"][1] - dome["radius"])
+    m.ball.vel = Vec(0, -4)
+    m.ball.held_by = None
+    m.last_thrower_team = 1
+    score_before = m.score.score_team1
+    m.tick({})
+    assert m.score.score_team1 == score_before + CFG.scoring["dome_bonus_points"]
+
+
+def test_star_bank_integration_via_tick():
+    m = Match(CFG, seed=(6, 6))
+    bank = CFG.arena["star_banks"][0]
+    from sim.vec import Vec
+    y = bank["y_min"] + 1
+    m.ball.pos = Vec(bank["x_max"] - 2, y)
+    m.ball.vel = Vec(-4, 0)
+    m.ball.held_by = None
+    m.last_thrower_team = 1
+    m.tick({})
+    assert m.furniture.lit_stars_team1 == 0b00001
+    assert m.score.score_team1 == CFG.scoring["star_bonus_points"]
+
+
+def test_electrobounce_integration_via_tick():
+    m = Match(CFG, seed=(9, 9))
+    left, right = CFG.arena["electrobounces"]
+    from sim.vec import Vec
+    m.ball.pos = Vec(*left["pos"])
+    m.ball.vel = Vec(-4, 0)
+    m.ball.held_by = None
+    m.tick({})
+    speed = CFG.physics["electrobounce_speed"]
+    assert m.ball.pos.x == right["pos"][0] - speed
+    assert m.furniture.electrobounce_flash_ticks == 1  # set to 2, ticked once
+
+
+def test_state_hash_reflects_furniture_state():
+    m1 = Match(CFG, seed=(3, 3))
+    m2 = Match(CFG, seed=(3, 3))
+    assert m1.state_hash() == m2.state_hash()
+    m1.furniture.lit_stars_team1 = 0b00001
+    assert m1.state_hash() != m2.state_hash()
