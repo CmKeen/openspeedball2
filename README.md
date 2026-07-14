@@ -74,8 +74,12 @@ In priority order, each a future plan of its own:
 1. **AI fidelity**: translate REF `Player.cs` think-dispatch behaviors one
    function at a time, validated frame-by-frame against
    `bin/Speedball 2.exe` with matched seeds.
-2. **Arena furniture**: stars, bounce domes, electrobounces, warp gates,
-   coins/tokens — REF has a class per item, none implemented yet.
+2. **Arena furniture**: tier 1 (stars, bounce domes, electrobounces) is
+   implemented — sim logic, data-driven placement (marked `[tunable —
+   validate]` in `data/arena.json` pending frame-trace validation), and
+   placeholder rendering. Token/warp-gate pickups (REF's `Token` class:
+   freeze, reverse-joystick, stat buffs, the warp-gate teleport, etc.) are
+   a separate, larger follow-up design, not yet implemented.
 3. **Sound** (extraction tools exist upstream).
 4. **Management layer**: gym, transfers, injuries (Megadrive RE covers the
    gym).
