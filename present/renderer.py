@@ -19,6 +19,9 @@ LINE_COLOR = (230, 230, 230)
 GOAL_COLOR = (255, 255, 255)
 BANK_DIM = (150, 130, 20)
 BANK_LIT = (255, 220, 0)
+DOME_COLOR = (180, 180, 190)
+ELECTRO_DIM = (0, 110, 130)
+ELECTRO_LIT = (0, 220, 255)
 TEAM1_COLOR = (70, 130, 180)   # steel blue
 TEAM2_COLOR = (220, 20, 60)    # crimson
 GK_RING_COLOR = (255, 255, 255)
@@ -106,6 +109,36 @@ def _draw_pitch(screen: pygame.Surface, match: Match, cam_x: int, cam_y: int) ->
             bank["x_max"] - bank["x_min"], bank["y_max"] - bank["y_min"],
         )
         pygame.draw.rect(screen, color, rect)
+
+    # Bounce domes.
+    for dome in arena["bounce_domes"]:
+        cx = dome["pos"][0] - cam_x
+        cy = dome["pos"][1] - cam_y
+        pygame.draw.circle(screen, DOME_COLOR, (cx, cy), dome["radius"])
+
+    # Electrobounces.
+    flashing = match.furniture.electrobounce_flash_ticks > 0
+    for plate in arena["electrobounces"]:
+        color = ELECTRO_LIT if flashing else ELECTRO_DIM
+        px = plate["pos"][0] - cam_x
+        py = plate["pos"][1] - cam_y
+        points = [(px, py - 8), (px + 8, py), (px, py + 8), (px - 8, py)]
+        pygame.draw.polygon(screen, color, points)
+
+    # Star banks.
+    for bank in arena["star_banks"]:
+        lit_mask = (match.furniture.lit_stars_team1 if bank["team"] == 1
+                   else match.furniture.lit_stars_team2)
+        band_height = (bank["y_max"] - bank["y_min"]) // bank["count"]
+        for i in range(bank["count"]):
+            lit = bool(lit_mask & (1 << i))
+            color = BANK_LIT if lit else BANK_DIM
+            y0 = bank["y_min"] + i * band_height
+            rect = pygame.Rect(
+                bank["x_min"] - cam_x, y0 - cam_y,
+                bank["x_max"] - bank["x_min"], band_height - 2,
+            )
+            pygame.draw.rect(screen, color, rect)
 
 
 def _draw_players(screen: pygame.Surface, match: Match, controlled_pid: int,
