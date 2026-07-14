@@ -2,7 +2,8 @@
 
 Tick order translated from REF Match.cs Update (see docs/spec/mechanics.md):
 1. update_ball_velocity
-2. check_multiplier_banks + tick_multipliers
+2. check_multiplier_banks + tick_multipliers; check_bounce_domes;
+   check_electrobounces + tick_electrobounce_flash; check_star_banks
 3. (distance-to-ball is recomputed implicitly via pickup ordering below)
 4. resolve intents: movement for all; action_a/action_b per holder state;
    pickups for a free ball, closest eligible player first
