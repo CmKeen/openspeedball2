@@ -119,8 +119,8 @@ the closing `}`):
     { "pos": [624, 560], "wall": "right" }
   ],
   "star_banks": [
-    { "team": 1, "x_min": 0,   "x_max": 24,  "y_min": 320, "y_max": 480, "count": 5 },
-    { "team": 2, "x_min": 616, "x_max": 640, "y_min": 672, "y_max": 832, "count": 5 }
+    { "team": 1, "x_min": 0,   "x_max": 24,  "y_min": 160, "y_max": 320, "count": 5 },
+    { "team": 2, "x_min": 616, "x_max": 640, "y_min": 832, "y_max": 992, "count": 5 }
   ]
 ```
 
