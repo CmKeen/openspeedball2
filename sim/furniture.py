@@ -53,3 +53,29 @@ def check_bounce_domes(ball: Ball, arena: dict, physics: dict,
             _add_score(score, last_thrower_team, scoring["dome_bonus_points"])
         return True
     return False
+
+
+def check_electrobounces(ball: Ball, arena: dict, physics: dict,
+                         furniture: FurnitureState) -> bool:
+    if ball.held_by is not None or ball.vel == Vec(0, 0):
+        return False
+    plates = arena["electrobounces"]
+    hit_range = physics["electrobounce_range"]
+    for plate in plates:
+        pos = Vec(*plate["pos"])
+        if ball.pos.chebyshev(pos) > hit_range:
+            continue
+        other = next(p for p in plates if p is not plate)
+        speed = physics["electrobounce_speed"]
+        push = -speed if plate["wall"] == "left" else speed
+        ball.pos = Vec(other["pos"][0], ball.pos.y)
+        ball.vel = Vec(push, 0)
+        ball.bounce_timer = 0
+        furniture.electrobounce_flash_ticks = 2
+        return True
+    return False
+
+
+def tick_electrobounce_flash(furniture: FurnitureState) -> None:
+    if furniture.electrobounce_flash_ticks > 0:
+        furniture.electrobounce_flash_ticks -= 1
