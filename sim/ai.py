@@ -54,12 +54,9 @@ def _pass_thresholds(match: Match, p: PlayerSim) -> tuple[int, ...]:
     return (2, 1, 0)
 
 
-def _first_defender(match: Match, team: int) -> PlayerSim | None:
+def _support_anchor(match: Match, team: int) -> PlayerSim | None:
     team_players = match.players_team1 if team == 1 else match.players_team2
-    for player in team_players:
-        if player.position == 1:
-            return player
-    return None
+    return team_players[0] if team_players else None
 
 
 def _choose_pass_target(match: Match, p: PlayerSim, goal_center: Vec) -> PlayerSim | None:
@@ -112,17 +109,23 @@ def _predicted_target(match: Match, p: PlayerSim, pos: Vec, vel: Vec) -> Vec:
     )
 
 
-def _attacker_lookup_target(match: Match, p: PlayerSim, ref: Vec) -> Vec | None:
+def _attacker_lookup_target(match: Match, p: PlayerSim, holder: PlayerSim) -> Vec | None:
+    # Amiga REF sub_E382(): the lookup is keyed off the ball holder's
+    # *predicted* position (pos + vel). The pitch-half mirror applied going
+    # into the table uses that predicted position, but the mirror applied
+    # coming back out uses the holder's actual (non-predicted) position --
+    # the two can disagree when the holder is near the center line.
     if _ai_group(match, p) < 3:
         return None
 
     width = match.cfg.arena["width"]
     height = match.cfg.arena["height"]
-    lookup_x = ref.x
-    lookup_y = ref.y
-    mirror_x = lookup_x >= width // 2
+    predicted = Vec(holder.pos.x + holder.vel.x, holder.pos.y + holder.vel.y)
+    lookup_x = predicted.x
+    lookup_y = predicted.y
+    mirror_x_in = lookup_x >= width // 2
 
-    if mirror_x:
+    if mirror_x_in:
         lookup_x = (width - 1) - lookup_x
     if p.team == 2:
         lookup_y = (height - 1) - lookup_y
@@ -135,7 +138,8 @@ def _attacker_lookup_target(match: Match, p: PlayerSim, ref: Vec) -> Vec | None:
     table = _WING_SUPPORT_LOOKUP if _ai_group(match, p) == 4 else _CFWD_SUPPORT_LOOKUP
     target_x, target_y = table[row][col]
 
-    if mirror_x:
+    mirror_x_out = holder.pos.x >= width // 2
+    if mirror_x_out:
         target_x = (width - 1) - target_x
     if p.team == 2:
         target_y = (height - 1) - target_y
@@ -198,6 +202,11 @@ def decide_goalkeeper(match: Match, p: PlayerSim) -> InputState:
             return InputState(dir=dir_towards(p.pos, target_p.pos), action_a=True)
         return InputState(dir=None)
 
+    # Amiga REF sub_E61A_GoalUnk(): a loose ball close enough to lunge for is
+    # grabbed directly, bypassing the goal-line-locked predicted lane below.
+    if ball.held_by is None and p.pos.chebyshev(ball.pos) <= 60:
+        return _move_to(p, ball.pos)
+
     arena = match.cfg.arena
     margin = arena["wall_margin_player"]
     lo = max(margin, arena["goal_mouth_x_min"] - 16)
@@ -224,15 +233,15 @@ def decide_support(match: Match, p: PlayerSim) -> InputState:
 
 def decide_team_support(match: Match, p: PlayerSim, holder: PlayerSim) -> InputState:
     if _ai_group(match, p) >= 3 and _ai_group(match, holder) >= 3:
-        lookup_target = _attacker_lookup_target(match, p, holder.pos)
+        lookup_target = _attacker_lookup_target(match, p, holder)
         if lookup_target is not None:
             return _move_to(p, lookup_target)
 
-    # Amiga REF get_defender_to_support(): defenders supporting a midfielder or
-    # attacker key off the lead defender rather than directly shadowing the
-    # carrier.
+    # Amiga REF sub_E218(): when a defender's teammate in a more advanced
+    # position holds the ball, the defender anchors off their own team's
+    # roster-index-0 player (the goalkeeper), not another defender.
     if _ai_group(match, p) == 1 and _ai_group(match, holder) >= 2:
-        support_target = _first_defender(match, p.team)
+        support_target = _support_anchor(match, p.team)
         if support_target is not None:
             return _move_to(p, support_target.pos)
     return decide_support(match, p)

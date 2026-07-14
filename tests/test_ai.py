@@ -5,7 +5,7 @@ from sim.ai import (compute_ai_inputs, decide_chase, decide_goalkeeper,
                     _choose_pass_target)
 from sim.config import load_config
 from sim.match import Match, player_id
-from sim.vec import Vec
+from sim.vec import Vec, dir_towards
 
 CFG = load_config(Path(__file__).resolve().parent.parent / "data")
 
@@ -93,7 +93,7 @@ def test_pass_target_respects_amiga_observe_distance_and_group_thresholds():
     assert target is midfielder
 
 
-def test_defender_support_uses_lead_defender_from_amiga_ai():
+def test_defender_support_anchors_on_own_goalkeeper_from_amiga_ai():
     m = Match(CFG, seed=(10, 10))
     holder = m.players_team1[7]
     holder.pos = Vec(320, 200)
@@ -103,16 +103,48 @@ def test_defender_support_uses_lead_defender_from_amiga_ai():
 
     inp = decide_team_support(m, supporting_defender, holder)
 
-    assert inp.dir == 6
+    goalie = m.players_team1[0]
+    assert inp.dir == dir_towards(supporting_defender.pos, goalie.pos)
 
 
 def test_attacker_lookup_uses_recovered_tail_column_from_amiga_table():
     m = Match(CFG, seed=(12, 12))
     cfwd = m.players_team1[7]
 
-    target = _attacker_lookup_target(m, cfwd, Vec(300, 40))
+    holder = m.players_team1[6]
+    holder.pos = Vec(300, 40)
+    holder.vel = Vec(0, 0)
+
+    target = _attacker_lookup_target(m, cfwd, holder)
 
     assert target == Vec(352, 96)
+
+
+def test_attacker_lookup_uses_holders_predicted_position():
+    m = Match(CFG, seed=(13, 13))
+    cfwd = m.players_team1[7]
+
+    holder = m.players_team1[6]
+    holder.pos = Vec(100, 40)
+    holder.vel = Vec(50, 0)
+
+    target = _attacker_lookup_target(m, cfwd, holder)
+
+    assert target == Vec(240, 144)
+
+
+def test_goalkeeper_rushes_nearby_loose_ball():
+    m = Match(CFG, seed=(14, 14))
+    goalie = m.players_team1[0]
+    goalie.pos = Vec(320, goalie.home.y)
+
+    m.ball.held_by = None
+    m.ball.pos = Vec(340, goalie.home.y - 40)
+    m.ball.vel = Vec(0, 0)
+
+    inp = decide_goalkeeper(m, goalie)
+
+    assert inp.dir == dir_towards(goalie.pos, m.ball.pos)
 
 
 def test_carry_roll_fires_only_in_shot_range():
