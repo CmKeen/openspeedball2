@@ -161,3 +161,35 @@ Tunable keys currently pending validation, with their REF pointers:
   are placeholders pending verification against `Match.cs` player-array
   initialization; if the original roster size differs from 9, this file and
   the formation logic must be updated together.
+
+### Known hardcoded exceptions (not yet in `data/*.json`)
+
+The Task 12 DoD audit (grep of `sim/` for numeric literals) confirmed the
+overwhelming majority of gameplay values already flow through
+`data/*.json` via `GameConfig`. A handful of constants are still literals
+in code, tracked as future data-driven cleanup (see README "Post-MVP
+roadmap"):
+
+- `sim/match.py` `_ROW_Y_TEAM1` / `_ROW_XS` — formation anchor coordinates
+  (row Y offsets and per-row X positions used to place all 18 players at
+  kickoff). This was an authoritative controller decision for v1 rather
+  than a translated RE value; it should become a `data/formations.json` (or
+  similar) once formation variety is on the roadmap.
+- `sim/ai.py` — the goalkeeper's ball-chase trigger distance (60), the
+  goal-mouth AI positioning margin (16), the support-shadow divisor (4),
+  and the "closest N teammates react" count (2) used by `_closest_ids`.
+  These are baseline-AI approximations, not RE ground truth; they'll be
+  replaced or moved to config during the AI fidelity pass.
+- `sim/actions.py` `apply_tackle_damage` — the damage formula's `150` and
+  `16` constants.
+- `sim/scoring.py` `check_multiplier_banks` — the bank-eject horizontal
+  speed (4) and reposition offset (8) used to kick the ball back out of a
+  multiplier bank.
+
+Numbers considered structural rather than gameplay-tunable (and therefore
+fine as literals) include: byte/word masks (`0xFF`, `0xFFFF`, `0xFFFFFFFF`),
+the 8 compass directions and their mirror tables in `sim/vec.py`, the
+`state_hash()` mixing multiplier `1000003` (an arbitrary but fixed hash
+constant, not a gameplay value), player-id encoding (`team * 100 + idx`),
+and small structural indices like array position `[4]` for "the central
+midfielder" in a fixed 9-player roster order.

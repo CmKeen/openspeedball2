@@ -42,3 +42,44 @@ Arrows/WASD: move · Space: pass/tackle · Left Shift: shoot/slide
 Mechanics are translated from documented reverse-engineering work:
 simon-frankau/speedball2-re (Megadrive), simon-frankau/speedball2-re-amiga,
 and Kroah's Speedball 2 Remake research (bringerp.free.fr).
+
+## Status
+
+v1 milestone (one playable match, human vs CPU) is complete: 51 headless
+tests passing, sim core verified render-free and deterministic, human and
+CPU both play a full match end-to-end. See `.superpowers/sdd/task-12-report.md`
+for the full definition-of-done audit.
+
+## Post-MVP roadmap
+
+In priority order, each a future plan of its own:
+
+1. **AI fidelity**: translate REF `Player.cs` think-dispatch behaviors one
+   function at a time, validated frame-by-frame against
+   `bin/Speedball 2.exe` with matched seeds.
+2. **Arena furniture**: stars, bounce domes, electrobounces, warp gates,
+   coins/tokens — REF has a class per item, none implemented yet.
+3. **Sound** (extraction tools exist upstream).
+4. **Management layer**: gym, transfers, injuries (Megadrive RE covers the
+   gym).
+5. **League/cup + save system.**
+6. **Menus/UI.**
+7. **Online multiplayer**: lockstep first — the deterministic core makes
+   this an input-exchange problem: each peer runs the same seeded sim and
+   exchanges per-tick `InputState` dicts, cross-checking `state_hash()`
+   periodically to catch desync; rollback netcode later if lockstep's
+   input-delay feel needs improving.
+8. **Discoverability**: register the project on osgameclones.com and
+   awesome-game-remakes.
+
+Also tracked as a small data-driven cleanup once AI fidelity work starts:
+a few gameplay constants are still hardcoded in `sim/` rather than sourced
+from `data/*.json` — most notably the formation anchor coordinates
+(`_ROW_Y_TEAM1`, `_ROW_XS` in `sim/match.py`), which were an authoritative
+controller decision for v1, plus several AI thresholds in `sim/ai.py`
+(chase/keeper-margin distances, the support-shadow divisor, "closest N
+players" count) and a couple of scoring/tackle formula constants in
+`sim/scoring.py` and `sim/actions.py`. None of these break the "sim core
+is data-driven" property in spirit (the *rules* are code, only a few of
+the *numbers* aren't yet in JSON) but they should move to `data/*.json`
+during the AI fidelity pass so they can be tuned without touching code.
