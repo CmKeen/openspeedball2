@@ -45,10 +45,13 @@ and Kroah's Speedball 2 Remake research (bringerp.free.fr).
 
 ## Status
 
-v1 milestone (one playable match, human vs CPU) is complete: 51 headless
-tests passing, sim core verified render-free and deterministic, human and
-CPU both play a full match end-to-end. See `.superpowers/sdd/task-12-report.md`
-for the full definition-of-done audit.
+v1 milestone (one playable match, human vs CPU) is complete: 53 headless
+tests passing, sim core verified render-free and deterministic. A
+headless smoke run (`Match.tick_with_ai()` for 2000 ticks under
+`SDL_VIDEODRIVER=dummy`, no human input) exercises movement, pickup,
+tackling, throwing, and scoring end-to-end without exceptions; a human
+has not yet interactively verified feel/controls. See
+`docs/dod-audit.md` for the definition-of-done audit summary.
 
 ## Post-MVP roadmap
 
