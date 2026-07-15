@@ -169,6 +169,21 @@ def test_electrobounce_integration_via_tick():
     assert m.furniture.electrobounce_flash_ticks == 1  # set to 2, ticked once
 
 
+def test_electrobounce_does_not_ping_pong_across_ticks():
+    m = Match(CFG, seed=(9, 9))
+    left, right = CFG.arena["electrobounces"]
+    from sim.vec import Vec
+    m.ball.pos = Vec(*left["pos"])
+    m.ball.vel = Vec(-4, 0)
+    m.ball.held_by = None
+    for _ in range(20):
+        m.tick({})
+    # A single crossing, not an infinite left<->right bounce: the ball
+    # should settle on the right side of the pitch, not oscillate back
+    # to the left plate's x.
+    assert m.ball.pos.x > (left["pos"][0] + right["pos"][0]) // 2
+
+
 def test_state_hash_reflects_furniture_state():
     m1 = Match(CFG, seed=(3, 3))
     m2 = Match(CFG, seed=(3, 3))

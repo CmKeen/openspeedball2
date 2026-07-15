@@ -23,6 +23,7 @@ class FurnitureState:
     lit_stars_team1: int = 0
     lit_stars_team2: int = 0
     electrobounce_flash_ticks: int = 0
+    electrobounce_cooldown: bool = False
 
 
 def _add_score(score: ScoreState, team: int, points: int) -> None:
@@ -58,22 +59,32 @@ def check_bounce_domes(ball: Ball, arena: dict, physics: dict,
 def check_electrobounces(ball: Ball, arena: dict, physics: dict,
                          furniture: FurnitureState) -> bool:
     if ball.held_by is not None or ball.vel == Vec(0, 0):
+        furniture.electrobounce_cooldown = False
         return False
     plates = arena["electrobounces"]
     hit_range = physics["electrobounce_range"]
-    for plate in plates:
-        pos = Vec(*plate["pos"])
-        if ball.pos.chebyshev(pos) > hit_range:
-            continue
-        other = next(p for p in plates if p is not plate)
-        speed = physics["electrobounce_speed"]
-        push = -speed if plate["wall"] == "left" else speed
-        ball.pos = Vec(other["pos"][0], ball.pos.y)
-        ball.vel = Vec(push, 0)
-        ball.bounce_timer = 0
-        furniture.electrobounce_flash_ticks = 2
-        return True
-    return False
+    in_range = next((p for p in plates
+                     if ball.pos.chebyshev(Vec(*p["pos"])) <= hit_range), None)
+    if in_range is None:
+        furniture.electrobounce_cooldown = False
+        return False
+    # A teleported ball lands exactly on the opposite plate and may still be
+    # within hit_range of it after one tick's movement — without this latch
+    # it would immediately re-trigger and ping-pong between the plates
+    # forever instead of crossing the pitch. Cleared once the ball leaves
+    # both plates' range under its own steam.
+    if furniture.electrobounce_cooldown:
+        return False
+    plate = in_range
+    other = next(p for p in plates if p is not plate)
+    speed = physics["electrobounce_speed"]
+    push = -speed if plate["wall"] == "left" else speed
+    ball.pos = Vec(other["pos"][0], ball.pos.y)
+    ball.vel = Vec(push, 0)
+    ball.bounce_timer = 0
+    furniture.electrobounce_flash_ticks = 2
+    furniture.electrobounce_cooldown = True
+    return True
 
 
 def tick_electrobounce_flash(furniture: FurnitureState) -> None:

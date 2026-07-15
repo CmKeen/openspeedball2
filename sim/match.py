@@ -230,6 +230,7 @@ class Match:
                   self.furniture.lit_stars_team1,
                   self.furniture.lit_stars_team2,
                   self.furniture.electrobounce_flash_ticks,
+                  int(self.furniture.electrobounce_cooldown),
                   self.rng.a, self.rng.b,
                   self.clock_ticks, self.last_thrower_team):
             mix(v)

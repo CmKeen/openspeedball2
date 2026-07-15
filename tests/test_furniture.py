@@ -66,6 +66,38 @@ def test_electrobounce_teleports_right_hit_to_left_plate():
     assert ball.vel.x > 0  # pushed away from the left wall, back onto the pitch
 
 
+def test_electrobounce_does_not_retrigger_while_still_in_range():
+    left, right = CFG.arena["electrobounces"]
+    ball = Ball(pos=Vec(*left["pos"]), vel=Vec(-4, 0))
+    furniture = FurnitureState()
+    assert check_electrobounces(ball, CFG.arena, CFG.physics, furniture)
+    assert ball.pos.x == right["pos"][0]
+
+    # Ball is still within electrobounce_range of the plate it just landed
+    # on (didn't move yet) -- must not immediately teleport it back.
+    hit_again = check_electrobounces(ball, CFG.arena, CFG.physics, furniture)
+    assert not hit_again
+    assert ball.pos.x == right["pos"][0]
+
+
+def test_electrobounce_rearms_once_ball_leaves_range():
+    left, right = CFG.arena["electrobounces"]
+    ball = Ball(pos=Vec(*left["pos"]), vel=Vec(-4, 0))
+    furniture = FurnitureState()
+    assert check_electrobounces(ball, CFG.arena, CFG.physics, furniture)
+
+    ball.pos = Vec(right["pos"][0] - CFG.physics["electrobounce_range"] - 1,
+                   ball.pos.y)
+    ball.vel = Vec(-4, 0)
+    assert not check_electrobounces(ball, CFG.arena, CFG.physics, furniture)
+    assert furniture.electrobounce_cooldown is False
+
+    ball.pos = Vec(*right["pos"])
+    hit = check_electrobounces(ball, CFG.arena, CFG.physics, furniture)
+    assert hit
+    assert ball.pos.x == left["pos"][0]
+
+
 def test_electrobounce_ignores_held_or_stationary_ball():
     left, _ = CFG.arena["electrobounces"]
     furniture = FurnitureState()
