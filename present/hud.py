@@ -11,7 +11,8 @@ WHITE = (255, 255, 255)
 YELLOW = (255, 220, 0)
 
 
-def draw_hud(screen: pygame.Surface, match: Match, font) -> None:
+def draw_hud(screen: pygame.Surface, match: Match, font,
+             kickoff_ticks_left: int = 0) -> None:
     strip = pygame.Rect(0, 0, 640, HUD_HEIGHT)
     pygame.draw.rect(screen, HUD_BG, strip)
 
@@ -36,3 +37,8 @@ def draw_hud(screen: pygame.Surface, match: Match, font) -> None:
     screen.blit(t1_surf, (8, y))
     screen.blit(clock_surf, (640 // 2 - clock_surf.get_width() // 2, y))
     screen.blit(t2_surf, (640 - 8 - t2_surf.get_width(), y))
+
+    if kickoff_ticks_left > 0:
+        kickoff_surf = font.render("KICK OFF", True, YELLOW)
+        screen.blit(kickoff_surf, (640 // 2 - kickoff_surf.get_width() // 2,
+                                   screen.get_height() // 2))

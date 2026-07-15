@@ -202,10 +202,7 @@ def _move_to(p: PlayerSim, target: Vec) -> InputState:
 
 
 def _opp_goal_center(match: Match, p: PlayerSim) -> Vec:
-    height = match.cfg.arena["height"]
-    depth = match.cfg.arena["goal_depth"]
-    goal_line_y = depth if p.team == 1 else height - depth
-    return Vec(320, goal_line_y)
+    return match._opp_goal_center(p)
 
 
 def decide_goalkeeper(match: Match, p: PlayerSim) -> InputState:

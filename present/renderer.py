@@ -12,7 +12,7 @@ from pathlib import Path
 import pygame
 
 from sim.match import Match, player_id
-from sim.vec import Vec
+from sim.vec import DIR_VECTORS, Vec
 
 BG_COLOR = (18, 60, 28)
 LINE_COLOR = (230, 230, 230)
@@ -31,6 +31,8 @@ BALL_HELD_COLOR = (160, 160, 160)
 
 PLAYER_RADIUS = 6
 BALL_RADIUS = 4
+FACING_COLOR = (20, 20, 20)
+FACING_LEN = PLAYER_RADIUS + 5
 
 WINDOW_W = 640
 WINDOW_H = 480
@@ -162,6 +164,11 @@ def _draw_players(screen: pygame.Surface, match: Match, controlled_pid: int,
                 pygame.draw.ellipse(screen, color, ellipse_rect)
             else:
                 pygame.draw.circle(screen, color, (sx, sy), PLAYER_RADIUS)
+
+        if not falling:
+            step = DIR_VECTORS[p.dir]
+            tip = (sx + step.x * FACING_LEN, sy + step.y * FACING_LEN)
+            pygame.draw.line(screen, FACING_COLOR, (sx, sy), tip, 2)
 
         if p.position == 0:
             pygame.draw.circle(screen, GK_RING_COLOR, (sx, sy), PLAYER_RADIUS + 2, 2)

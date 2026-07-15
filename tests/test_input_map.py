@@ -43,9 +43,12 @@ def test_action_edge_is_single_button_and_withholds_dir():
 def test_diagonal_throw_uses_persistent_facing():
     # Run NE for a few ticks, then press the action button on a tick where
     # the direction read is empty (ghosted): the ball must fly NE anyway.
+    # Start within shot range of the opponent's goal so the single-button
+    # throw resolves as a shot (see test_action_button_passes_outside_shot_range
+    # for the complementary pass case).
     m = Match(CFG, seed=(9, 9))
     p = m.players_team1[4]
-    p.pos = Vec(320, 576)
+    p.pos = Vec(320, 200)
     m.ball.held_by = p
     m._prev_holder = p
     pid = player_id(1, 4)
@@ -55,3 +58,22 @@ def test_diagonal_throw_uses_persistent_facing():
     assert m.ball.held_by is None
     shot = CFG.physics["shot_speed"]
     assert m.ball.vel == Vec(shot, -shot)           # NE diagonal
+
+
+def test_action_button_passes_outside_shot_range():
+    # Regression test: the single-button refactor set both action_a and
+    # action_b true on every press, which made shot=inp.action_b always
+    # True and pass_speed unreachable for humans. Far from goal, the button
+    # must resolve as a pass (pass_speed), matching the AI's own
+    # decide_carry threshold (ai_shot_range).
+    m = Match(CFG, seed=(9, 9))
+    p = m.players_team1[4]
+    p.pos = Vec(320, 720)  # home row, far outside ai_shot_range of either goal
+    p.dir = 0  # facing north
+    m.ball.held_by = p
+    m._prev_holder = p
+    pid = player_id(1, 4)
+    m.tick({pid: compute_input(0, 0, True)})
+    assert m.ball.held_by is None
+    pass_speed = CFG.physics["pass_speed"]
+    assert m.ball.vel == Vec(0, -pass_speed)

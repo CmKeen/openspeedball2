@@ -191,12 +191,28 @@ class Match:
         holder = self.ball.held_by
         if holder is p:
             self.last_thrower_team = p.team
-            throw(self.ball, p, phy, shot=inp.action_b, ball_speed_ref=self.ball_speed_ref)
+            if inp.action_a and inp.action_b:
+                # Single-button human throw: no separate pass/shoot input
+                # exists, so pick the same way the AI's decide_carry does --
+                # shoot once within shot range of the opponent's goal,
+                # otherwise a softer pass. Without this, a raw action_b=True
+                # always fires, and pass_speed becomes unreachable for humans.
+                shot = p.pos.chebyshev(self._opp_goal_center(p)) <= phy["ai_shot_range"]
+            else:
+                shot = inp.action_b
+            throw(self.ball, p, phy, shot=shot, ball_speed_ref=self.ball_speed_ref)
             return
         if inp.action_b and p.sliding_ticks == 0 and p.falling_ticks == 0:
             p.sliding_ticks = phy["slide_ticks"]
         if inp.action_a and holder is not None and holder.team != p.team:
             attempt_tackle(p, [holder], self.ball, self.rng, phy)
+
+    def _opp_goal_center(self, p: PlayerSim) -> Vec:
+        arena = self.cfg.arena
+        depth = arena["goal_depth"]
+        goal_line_y = depth if p.team == 1 else arena["height"] - depth
+        goal_x = (arena["goal_mouth_x_min"] + arena["goal_mouth_x_max"]) // 2
+        return Vec(goal_x, goal_line_y)
 
     @property
     def is_over(self) -> bool:
