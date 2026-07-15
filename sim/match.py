@@ -2,7 +2,8 @@
 
 Tick order translated from REF Match.cs Update (see docs/spec/mechanics.md):
 1. update_ball_velocity
-2. check_multiplier_banks + tick_multipliers
+2. check_multiplier_banks + tick_multipliers; check_bounce_domes;
+   check_electrobounces + tick_electrobounce_flash; check_star_banks
 3. (distance-to-ball is recomputed implicitly via pickup ordering below)
 4. resolve intents: movement for all; action_a/action_b per holder state;
    pickups for a free ball, closest eligible player first
@@ -16,6 +17,9 @@ from __future__ import annotations
 from sim.actions import attempt_tackle, throw, try_pickup
 from sim.config import GameConfig
 from sim.entities import Ball, move_and_bounce, update_ball_velocity
+from sim.furniture import (FurnitureState, check_bounce_domes,
+                           check_electrobounces, check_star_banks,
+                           tick_electrobounce_flash)
 from sim.input import IDLE, InputState
 from sim.player import PlayerSim, apply_movement
 from sim.rng import Sb2Rng
@@ -41,6 +45,7 @@ class Match:
         self.cfg = config
         self.rng = Sb2Rng(*seed) if seed else Sb2Rng()
         self.score = ScoreState()
+        self.furniture = FurnitureState()
         self.tick_count = 0
         self.clock_ticks = config.scoring["leg_duration_ticks"]
         self.ball_speed_ref = [0]
@@ -131,6 +136,12 @@ class Match:
         check_multiplier_banks(self.ball, arena, sco, self.score,
                                self.last_thrower_team)
         tick_multipliers(self.score)
+        check_bounce_domes(self.ball, arena, phy, self.last_thrower_team,
+                           self.score, sco)
+        check_electrobounces(self.ball, arena, phy, self.furniture)
+        tick_electrobounce_flash(self.furniture)
+        check_star_banks(self.ball, arena, sco, self.furniture, self.score,
+                         self.last_thrower_team)
 
         for p in self.all_players():
             inp = inputs.get(player_id(p.team, p.index), IDLE)
@@ -216,6 +227,10 @@ class Match:
         for v in (self.score.score_team1, self.score.score_team2,
                   self.score.multiplier_team1_ticks,
                   self.score.multiplier_team2_ticks,
+                  self.furniture.lit_stars_team1,
+                  self.furniture.lit_stars_team2,
+                  self.furniture.electrobounce_flash_ticks,
+                  int(self.furniture.electrobounce_cooldown),
                   self.rng.a, self.rng.b,
                   self.clock_ticks, self.last_thrower_team):
             mix(v)

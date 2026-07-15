@@ -17,6 +17,32 @@ def test_load_config_shapes():
         assert team["players"][0]["position"] == 0  # goalkeeper first
 
 
+def test_furniture_data_shapes():
+    cfg = load_config(DATA)
+    assert len(cfg.arena["bounce_domes"]) == 2
+    for dome in cfg.arena["bounce_domes"]:
+        assert len(dome["pos"]) == 2
+        assert dome["radius"] > 0
+
+    assert len(cfg.arena["electrobounces"]) == 2
+    walls = {p["wall"] for p in cfg.arena["electrobounces"]}
+    assert walls == {"left", "right"}
+
+    assert len(cfg.arena["star_banks"]) == 2
+    teams = {b["team"] for b in cfg.arena["star_banks"]}
+    assert teams == {1, 2}
+    for bank in cfg.arena["star_banks"]:
+        assert bank["count"] == 5
+
+    assert cfg.physics["dome_bounce_speed"] > 0
+    assert cfg.physics["electrobounce_speed"] > 0
+    assert cfg.physics["electrobounce_range"] > 0
+
+    assert cfg.scoring["dome_bonus_points"] > 0
+    assert cfg.scoring["star_bonus_points"] > 0
+    assert cfg.scoring["star_row_bonus_points"] > 0
+
+
 def test_dir_vectors():
     assert DIR_VECTORS[0] == Vec(0, -1)   # N
     assert DIR_VECTORS[2] == Vec(1, 0)    # E

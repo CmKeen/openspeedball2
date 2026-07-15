@@ -2,5 +2,8 @@
   "goal_points": 10,
   "goal_points_multiplied": 20,
   "multiplier_duration_ticks": 1500,
-  "leg_duration_ticks": 13500
+  "leg_duration_ticks": 13500,
+  "dome_bonus_points": 2,
+  "star_bonus_points": 2,
+  "star_row_bonus_points": 10
 }

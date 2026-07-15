@@ -19,5 +19,8 @@
   "fall_ticks": 25,
   "slide_ticks": 12,
   "ai_shot_range": 260,
-  "ai_unmarked_radius": 40
+  "ai_unmarked_radius": 40,
+  "dome_bounce_speed": 8,
+  "electrobounce_speed": 8,
+  "electrobounce_range": 16
 }
