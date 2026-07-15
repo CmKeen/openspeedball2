@@ -33,6 +33,12 @@ PLAYER_RADIUS = 6
 BALL_RADIUS = 4
 FACING_COLOR = (20, 20, 20)
 FACING_LEN = PLAYER_RADIUS + 5
+# [tunable -- approximation] The original scales the ball sprite up then
+# back down mid-throw to fake height/perspective (no explicit Z field is
+# ported here -- see docs/spec/mechanics.md). We approximate it as a
+# parabolic scale keyed off the existing bounce_timer countdown, purely
+# in the presentation layer so it can't affect sim determinism.
+LOB_PEAK_SCALE = 1.8
 
 WINDOW_W = 640
 WINDOW_H = 480
@@ -40,13 +46,25 @@ WINDOW_H = 480
 _SPRITES_DIR = Path("assets/sprites")
 
 
+def _tint(img: pygame.Surface, color: tuple[int, int, int]) -> pygame.Surface:
+    # Real extracted sprites (tools/crop_amiga_sprites.py) don't carry the
+    # original's runtime per-team palette swap, so both teams' raw pixels
+    # come out looking identical. Multiply-tint here guarantees team1/team2
+    # stay visually distinct regardless of the source sprite's own colors.
+    tinted = img.copy()
+    tinted.fill((*color, 255), special_flags=pygame.BLEND_RGBA_MULT)
+    return tinted
+
+
 def _load_sprites() -> dict[str, pygame.Surface] | None:
     if not _SPRITES_DIR.exists():
         return None
     try:
+        t1_raw = pygame.image.load(str(_SPRITES_DIR / "player_t1.png")).convert_alpha()
+        t2_raw = pygame.image.load(str(_SPRITES_DIR / "player_t2.png")).convert_alpha()
         sprites = {
-            "t1": pygame.image.load(str(_SPRITES_DIR / "player_t1.png")).convert_alpha(),
-            "t2": pygame.image.load(str(_SPRITES_DIR / "player_t2.png")).convert_alpha(),
+            "t1": _tint(t1_raw, TEAM1_COLOR),
+            "t2": _tint(t2_raw, TEAM2_COLOR),
             "ball": pygame.image.load(str(_SPRITES_DIR / "ball.png")).convert_alpha(),
         }
         return sprites
@@ -176,18 +194,35 @@ def _draw_players(screen: pygame.Surface, match: Match, controlled_pid: int,
             pygame.draw.circle(screen, CONTROLLED_RING_COLOR, (sx, sy), PLAYER_RADIUS + 4, 2)
 
 
+def _lob_scale(match: Match) -> float:
+    ball = match.ball
+    if ball.held_by is not None or ball.bounce_timer <= 0:
+        return 1.0
+    total = match.cfg.physics["throw_bounce_timer"]
+    if total <= 0:
+        return 1.0
+    progress = 1.0 - (ball.bounce_timer / total)
+    progress = max(0.0, min(1.0, progress))
+    return 1.0 + (LOB_PEAK_SCALE - 1.0) * 4 * progress * (1 - progress)
+
+
 def _draw_ball(screen: pygame.Surface, match: Match, cam_x: int, cam_y: int) -> None:
     ball = match.ball
     sx = ball.pos.x - cam_x
     sy = ball.pos.y - cam_y
+    scale = _lob_scale(match)
     sprites = _sprites()
     if sprites is not None:
         img = sprites["ball"]
+        if scale != 1.0:
+            w, h = img.get_size()
+            img = pygame.transform.smoothscale(img, (max(1, round(w * scale)),
+                                                      max(1, round(h * scale))))
         rect = img.get_rect(center=(sx, sy))
         screen.blit(img, rect)
     else:
         color = BALL_HELD_COLOR if ball.held_by is not None else BALL_COLOR
-        pygame.draw.circle(screen, color, (sx, sy), BALL_RADIUS)
+        pygame.draw.circle(screen, color, (sx, sy), max(1, round(BALL_RADIUS * scale)))
 
 
 def draw_frame(screen: pygame.Surface, match: Match, controlled_pid: int, font) -> None:
