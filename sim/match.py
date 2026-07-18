@@ -50,6 +50,10 @@ class Match:
         self.clock_ticks = config.scoring["leg_duration_ticks"]
         self.ball_speed_ref = [0]
         self.last_thrower_team = 0
+        # Set True only on a tick where a goal is actually scored (as
+        # opposed to a furniture bonus like a dome/star/multiplier award,
+        # which also changes score but isn't a kickoff-worthy event).
+        self.goal_scored = False
         self.ball = Ball(pos=Vec(*config.arena["kickoff_center"]))
         self.players_team1 = self._build_team(1)
         self.players_team2 = self._build_team(2)
@@ -132,6 +136,7 @@ class Match:
 
     def tick(self, inputs: dict[int, InputState]) -> None:
         arena, phy, sco = self.cfg.arena, self.cfg.physics, self.cfg.scoring
+        self.goal_scored = False
         update_ball_velocity(self.ball, phy, self.ball_speed_ref)
         check_multiplier_banks(self.ball, arena, sco, self.score,
                                self.last_thrower_team)
@@ -160,6 +165,7 @@ class Match:
         goal = check_goal(self.ball, arena)
         if goal:
             award_goal(self.score, goal, sco)
+            self.goal_scored = True
             self.reset_to_kickoff(possession_team=2 if goal == 1 else 1)
         else:
             move_and_bounce(self.ball, arena, arena["wall_margin_ball"],

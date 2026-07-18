@@ -41,12 +41,10 @@ def main() -> None:
                 kickoff_ticks_left -= 1
                 space_edge = False
                 continue
-            prev_score = (match.score.score_team1, match.score.score_team2)
             pid = pick_controlled_player(match)
             match.tick_with_ai({pid: read_input(space_edge)})
             space_edge = False  # consumed by the first sim tick of this frame
-            new_score = (match.score.score_team1, match.score.score_team2)
-            if new_score != prev_score:
+            if match.goal_scored:
                 kickoff_ticks_left = KICKOFF_PAUSE_TICKS
         draw_frame(screen, match, pick_controlled_player(match), font)
         draw_hud(screen, match, font, kickoff_ticks_left)

@@ -33,12 +33,34 @@ PLAYER_RADIUS = 6
 BALL_RADIUS = 4
 FACING_COLOR = (20, 20, 20)
 FACING_LEN = PLAYER_RADIUS + 5
-# [tunable -- approximation] The original scales the ball sprite up then
-# back down mid-throw to fake height/perspective (no explicit Z field is
-# ported here -- see docs/spec/mechanics.md). We approximate it as a
-# parabolic scale keyed off the existing bounce_timer countdown, purely
+# tools/crop_amiga_sprites.py crops ball_arc.png as a 7-frame vertical strip
+# from REF's real ball bank (Entity.cs Draw: pGfx == 0x193EA ->
+# BankEnum.Entities), a 16x16-per-frame sheet distinct from the player
+# sheet -- so each frame is already correctly proportioned (half a player's
+# 32x32), no baseline scale needed.
+#
+# Those 7 frames are one full bounce cycle: frame 0 is the ball resting on
+# the ground (its drop shadow merged directly beneath it); 1-3 show it
+# rising, shrinking slightly as the shadow separates with a growing gap
+# (frame 3 is the peak -- smallest ball, biggest gap); 4-6 show it falling
+# back, growing again as the shadow gap closes, landing at frame 6. This is
+# the original's actual fake-height trick (ball shrinks and casts a
+# separating shadow when elevated -- not a uniform scale-up) and matches
+# Player.cs sub_D520/sub_D672's spriteIndex >2 needs-a-jump-to-catch cutoff
+# (only frames 0-2, near the start of the rise, are catchable normally).
+# We drive frame selection from the existing bounce_timer countdown, purely
 # in the presentation layer so it can't affect sim determinism.
-LOB_PEAK_SCALE = 1.8
+BALL_ARC_FRAME_SIZE = 16
+BALL_ARC_FRAME_COUNT = 7
+# REF (`Match.cs` MoveBallPlayersMedicsHandleWallsAndBounce) never draws the
+# held ball at full size in the player's center -- it offsets it to a small
+# hand position derived from the holder's own sprite frame (GetBallDeltasXY).
+# We approximate that hand offset/size without porting the per-frame table.
+BALL_HELD_SCALE = 0.6
+BALL_HAND_OFFSET = PLAYER_RADIUS
+# Primitive-shape fallback (no assets/sprites/) has no frames to select
+# between, so it keeps a continuous size dip approximating the same arc.
+BALL_PRIMITIVE_TROUGH_SCALE = 0.6
 
 WINDOW_W = 640
 WINDOW_H = 480
@@ -56,27 +78,34 @@ def _tint(img: pygame.Surface, color: tuple[int, int, int]) -> pygame.Surface:
     return tinted
 
 
-def _load_sprites() -> dict[str, pygame.Surface] | None:
+def _slice_ball_arc(strip: pygame.Surface) -> list[pygame.Surface]:
+    fs = BALL_ARC_FRAME_SIZE
+    return [strip.subsurface((0, i * fs, fs, fs)).copy()
+            for i in range(BALL_ARC_FRAME_COUNT)]
+
+
+def _load_sprites() -> dict[str, object] | None:
     if not _SPRITES_DIR.exists():
         return None
     try:
         t1_raw = pygame.image.load(str(_SPRITES_DIR / "player_t1.png")).convert_alpha()
         t2_raw = pygame.image.load(str(_SPRITES_DIR / "player_t2.png")).convert_alpha()
+        ball_strip = pygame.image.load(str(_SPRITES_DIR / "ball_arc.png")).convert_alpha()
         sprites = {
             "t1": _tint(t1_raw, TEAM1_COLOR),
             "t2": _tint(t2_raw, TEAM2_COLOR),
-            "ball": pygame.image.load(str(_SPRITES_DIR / "ball.png")).convert_alpha(),
+            "ball_arc": _slice_ball_arc(ball_strip),
         }
         return sprites
     except (pygame.error, FileNotFoundError, OSError):
         return None
 
 
-_sprites_cache: dict[str, pygame.Surface] | None = None
+_sprites_cache: dict[str, object] | None = None
 _sprites_loaded = False
 
 
-def _sprites() -> dict[str, pygame.Surface] | None:
+def _sprites() -> dict[str, object] | None:
     global _sprites_cache, _sprites_loaded
     if not _sprites_loaded:
         _sprites_cache = _load_sprites()
@@ -194,34 +223,53 @@ def _draw_players(screen: pygame.Surface, match: Match, controlled_pid: int,
             pygame.draw.circle(screen, CONTROLLED_RING_COLOR, (sx, sy), PLAYER_RADIUS + 4, 2)
 
 
-def _lob_scale(match: Match) -> float:
+def _ball_arc_progress(match: Match) -> float:
     ball = match.ball
-    if ball.held_by is not None or ball.bounce_timer <= 0:
-        return 1.0
+    if ball.bounce_timer <= 0:
+        return 0.0
     total = match.cfg.physics["throw_bounce_timer"]
     if total <= 0:
-        return 1.0
+        return 0.0
     progress = 1.0 - (ball.bounce_timer / total)
-    progress = max(0.0, min(1.0, progress))
-    return 1.0 + (LOB_PEAK_SCALE - 1.0) * 4 * progress * (1 - progress)
+    return max(0.0, min(1.0, progress))
+
+
+def _ball_arc_frame_index(match: Match) -> int:
+    # Frames 0-6 already encode the whole ground -> peak -> ground cycle in
+    # order (see BALL_ARC_FRAME_COUNT comment above), so progress maps to
+    # frame index directly -- no separate up/down split needed.
+    idx = round(_ball_arc_progress(match) * (BALL_ARC_FRAME_COUNT - 1))
+    return max(0, min(BALL_ARC_FRAME_COUNT - 1, idx))
+
+
+def _primitive_ball_scale(match: Match) -> float:
+    progress = _ball_arc_progress(match)
+    return 1.0 - (1.0 - BALL_PRIMITIVE_TROUGH_SCALE) * 4 * progress * (1 - progress)
 
 
 def _draw_ball(screen: pygame.Surface, match: Match, cam_x: int, cam_y: int) -> None:
     ball = match.ball
-    sx = ball.pos.x - cam_x
-    sy = ball.pos.y - cam_y
-    scale = _lob_scale(match)
+    held = ball.held_by is not None
+    if held:
+        step = DIR_VECTORS[ball.held_by.dir]
+        sx = ball.pos.x + step.x * BALL_HAND_OFFSET - cam_x
+        sy = ball.pos.y + step.y * BALL_HAND_OFFSET - cam_y
+    else:
+        sx = ball.pos.x - cam_x
+        sy = ball.pos.y - cam_y
     sprites = _sprites()
     if sprites is not None:
-        img = sprites["ball"]
-        if scale != 1.0:
+        arc = sprites["ball_arc"]
+        img = arc[0] if held else arc[_ball_arc_frame_index(match)]
+        if held and BALL_HELD_SCALE != 1.0:
             w, h = img.get_size()
-            img = pygame.transform.smoothscale(img, (max(1, round(w * scale)),
-                                                      max(1, round(h * scale))))
+            img = pygame.transform.smoothscale(img, (max(1, round(w * BALL_HELD_SCALE)),
+                                                      max(1, round(h * BALL_HELD_SCALE))))
         rect = img.get_rect(center=(sx, sy))
         screen.blit(img, rect)
     else:
-        color = BALL_HELD_COLOR if ball.held_by is not None else BALL_COLOR
+        scale = BALL_HELD_SCALE if held else _primitive_ball_scale(match)
+        color = BALL_HELD_COLOR if held else BALL_COLOR
         pygame.draw.circle(screen, color, (sx, sy), max(1, round(BALL_RADIUS * scale)))
 
 
