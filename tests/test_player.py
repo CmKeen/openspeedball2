@@ -15,17 +15,20 @@ def make_player(spd=128):
                      stats=stats, home=Vec(320, 576))
 
 
-def test_speed_bonus_threshold():
-    assert speed_of(make_player(spd=128), CFG.physics) == 2
-    assert speed_of(make_player(spd=200), CFG.physics) == 3
-    assert speed_of(make_player(spd=192), CFG.physics) == 3
+def test_speed_tier_thresholds():
+    assert speed_of(make_player(spd=128), CFG.physics) == 4   # below all thresholds
+    assert speed_of(make_player(spd=141), CFG.physics) == 5   # past 140 only
+    assert speed_of(make_player(spd=171), CFG.physics) == 6   # past 140 and 170
+    assert speed_of(make_player(spd=192), CFG.physics) == 6   # still below 200
+    assert speed_of(make_player(spd=200), CFG.physics) == 6   # 200 is not > 200
+    assert speed_of(make_player(spd=201), CFG.physics) == 7   # past all three
 
 
 def test_movement_sets_velocity_and_dir():
     p = make_player()
     apply_movement(p, InputState(dir=2), CFG.physics)   # East
     assert p.dir == 2
-    assert p.vel == Vec(2, 0)
+    assert p.vel == Vec(4, 0)
 
 
 def test_no_input_stops_player():
@@ -44,7 +47,7 @@ def test_falling_player_ignores_input_and_recovers():
     apply_movement(p, InputState(dir=6), CFG.physics)
     assert p.falling_ticks == 0
     apply_movement(p, InputState(dir=6), CFG.physics)
-    assert p.vel == Vec(-2, 0)        # control regained
+    assert p.vel == Vec(-4, 0)        # control regained
 
 
 def test_sliding_player_ignores_input_and_recovers():
@@ -56,4 +59,4 @@ def test_sliding_player_ignores_input_and_recovers():
     apply_movement(p, InputState(dir=6), CFG.physics)
     assert p.sliding_ticks == 0
     apply_movement(p, InputState(dir=6), CFG.physics)
-    assert p.vel == Vec(-2, 0)         # control regained, moving West
+    assert p.vel == Vec(-4, 0)         # control regained, moving West

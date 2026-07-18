@@ -121,37 +121,74 @@ multiplier" model. The rectangle position is now correct; the trigger
 mechanic itself is a separate, larger follow-up (new "directional entry"
 concept, no `sim/` equivalent yet).
 
-## Player movement speed tiers — structure known, values blocked on binary data
+## Binary-data-blocked items — resolved via `tools/extract_binary_constants.py`
 
-REF's regular-movement velocity (e.g. `Player.cs` 1580–1593, 1615–1626,
-1745–1750) is not a flat base+bonus like `sim/player.py::speed_of`
-(`player_base_speed` + 1 if `spd >= player_speed_bonus_threshold`, i.e. two
-tiers). It's a 4-tier ladder: velocity index 4 as the floor, +1 if
-`spd > Match.SpeedMaxForVelocity4` (140), +1 more if `spd > SpeedMaxForVelocity5`
-(170), +1 more if `spd > SpeedMaxForVelocity6` (200) — so the fastest
-players (velocity index 7) move noticeably faster than a merely-above-
-average player (index 5), a gradient `sim/` currently flattens to a single
-binary fast/slow split. The thresholds (140/170/200) are confirmed RE
-ground truth (named constants in `Match.cs`), but the *velocity index →
-actual XY speed* mapping is not: `Match.GetVelocityXYFromDir(dir, velocity)`
-reads it from a lookup table baked into the original Atari disk image
-(`Game.AtariDisk` at a computed offset), not from any literal in the
-decompiled source. Same class of blocker as `bounce_domes`/`electrobounces`
-positions above: the *shape* of the fix is known, the *numbers* require
-decoding binary game data this repo doesn't ship (see `README.md`'s asset
-policy), not more source reading. Flagged **[tunable — validate]**,
-unresolved.
+The three items above that were blocked on disk-resident data (player
+movement speed tiers, `bounce_domes`/`electrobounces` positions) are now
+**resolved**: `Resources/` (gitignored, user-supplied, legally-owned game
+copy) already contains the exact Atari ST disk image REF's own
+`Resource.resx` embeds byte-for-byte as `Atari_Disk` (`ResXFileRef` to that
+path, no transformation) — REF's own address formulas
+(`Game.AtariRamToDisk`, `Entity`'s byte layout) apply directly. Validated
+before trusting the results by extracting the default player-attribute
+roster (health/initialDir/pos/stat bytes) and confirming it's clean,
+structured data (uniform stat=100 roster, health=128, team1/team2 facing
+opposite `initialDir`, a plausible 0..4 position-code spread) rather than
+garbage, i.e. the address math is provably correct, not assumed. New tool:
+`tools/extract_binary_constants.py` (prints results for manual transcription
+into `data/*.json` with a citation; never writes/bundles game data itself).
 
-This is the third item this pass to hit the same wall (REF's disk-resident
-lookup tables), after arena furniture positions and now movement speed.
-`sim/ai.py`'s existing `_CFWD_SUPPORT_LOOKUP`/`_WING_SUPPORT_LOOKUP` tables
-show this data *can* be extracted (someone did it for those two tables
-already); the repo's `tools/extract_assets.py`/`crop_amiga_sprites.py`/
-`dos_pc1_decode.py` pipeline and the raw `Resources/`/`abandonware/` game
-dumps are the likely path to unlocking the rest, but that's a data-
-extraction project, not a source-reading one — out of scope for a static
-comparison pass. Worth flagging to the user as the next real force-
-multiplier: several blocked items here would resolve at once.
+**Player movement speed** (`Player.cs` 1580–1593 etc. call
+`Match.GetVelocityXYFromDir(dir, velocity)`): the extracted table shows
+velocity index maps *linearly* to per-axis terrain-units/tick (velocity `n`
+→ magnitude `n` along the facing axis/axes) — confirming REF's 4-tier
+ladder (base 4, +1 per `SpeedMaxForVelocity4/5/6` threshold exceeded, max 7)
+translates directly to real speeds 4–7. Fixed `data/physics.json`
+(`player_base_speed: 4`, new `player_speed_tier_thresholds: [140, 170, 200]`
+replacing the old flat `player_speed_bonus_threshold`) and
+`sim/player.py::speed_of` to implement the 3-threshold ladder instead of a
+single bonus. `tests/test_player.py` updated to the new tier values.
+
+**Bounce dome positions**: top `(320, 320)`, bottom `(320, 832)` (previously
+guessed `(320, 96)`/`(320, 1056)` — extraction confirms they *are*
+vertically mirrored around the pitch center, `320` and `1152 - 320 = 832`,
+just not where the placeholders guessed). Radius stays `16`, already
+confirmed from `BounceDomes.cs`'s literal `deltaX`/`deltaY > 16` checks —
+only the positions were data-dependent.
+
+**Electrobounce positions**: left `(20, 884)`, right `(620, 276)` (disk
+gives `terrainXY` `(20, 880)`/`(620, 272)`; REF's `UnkInRect` compares
+against `terrainXY.Y + originXY.Y`, and both entities' disk-loaded
+`originXY.Y` is `4`, so the effective trigger center is `+4`; folded in).
+Also mirrored point-symmetrically through the pitch center (`880 + 272 =
+1152`), not at equal heights as the old placeholder assumed.
+`electrobounce_range` corrected `16 → 15` (REF's literal `UnkInRect(..., 15)
+> 15`, not 16).
+
+**Electrobounce mechanic itself was also wrong, discovered while fixing the
+positions above**: applying the real (620, 276)/(20, 884) coordinates to
+the *old* `check_electrobounces` logic — which teleported the ball to the
+*other* plate's exact X — immediately broke `tests/test_match.py`, because
+620 sits past the corrected `wall_margin_ball` clamp (608) and the ball got
+re-bounced the same tick. Investigating why surfaced that the whole
+"teleport to the opposite plate" model was never something REF actually
+does: `Electrobounces.cs CheckHitOne` snaps the ball's X to a fixed
+same-side literal (`32`/`608`, i.e. exactly `wall_margin_ball`/`width -
+wall_margin_ball` post-correction — not the opposite wall) and redirects it
+via a direction vector from the plate toward the ball
+(`GetDirBitsToTargetBetter` + `GetVelocityXYFromDir(dir, 8)`), plus sets
+`Bit3_IsTeam1_IsElectrobounced = true`, a flag that flips which team's
+roster several `Player.cs` AI/possession routines treat as attacking for as
+long as the ball stays "charged" (see `sub_D672`, and the `players =
+Bit3_IsTeam1_IsElectrobounced ? PlayersTeam2 : PlayersTeam1` pattern
+throughout `Player.cs`). Fixed `sim/furniture.py::check_electrobounces`'
+destination-X formula to the correct same-side literal (confirmed exact);
+left the direction-vector redirect and team-flip flag as a documented
+approximation (still a simple away-from-the-wall push, no team-flip) since
+neither has a `sim/` equivalent yet (needs the same `DirBits` system
+`sub_D742_AII` is blocked on). Updated
+`tests/test_furniture.py`/`tests/test_match.py`'s electrobounce tests to
+the corrected same-side-snap model.
 
 ## Not yet surveyed (future pass starting points)
 

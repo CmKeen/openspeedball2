@@ -20,8 +20,18 @@ class PlayerSim(Entity):
 
 
 def speed_of(p: PlayerSim, physics: dict) -> int:
-    bonus = 1 if p.stats["spd"] >= physics["player_speed_bonus_threshold"] else 0
-    return physics["player_base_speed"] + bonus
+    # REF Player.cs (e.g. sub_E982/sub_EA62_CalcOpcodesTypeAndVelocityC):
+    # velocity starts at player_base_speed and gains +1 for each of
+    # SpeedMaxForVelocity4/5/6 (140/170/200) the player's spd stat exceeds,
+    # topping out at base+3. The velocity table itself (Match.cs
+    # GetVelocityXYFromDir) maps each velocity index directly to that many
+    # terrain units/tick per axis -- confirmed by extracting the table from
+    # the original disk image, not a guess.
+    speed = physics["player_base_speed"]
+    for threshold in physics["player_speed_tier_thresholds"]:
+        if p.stats["spd"] > threshold:
+            speed += 1
+    return speed
 
 
 def apply_movement(p: PlayerSim, inp: InputState, physics: dict) -> None:

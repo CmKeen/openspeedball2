@@ -2,8 +2,8 @@
   "ball_friction_per_tick": 1,
   "ball_no_friction_y_min": 48,
   "ball_no_friction_y_max": 1104,
-  "player_base_speed": 2,
-  "player_speed_bonus_threshold": 192,
+  "player_base_speed": 4,
+  "player_speed_tier_thresholds": [140, 170, 200],
   "tackle_range": 30,
   "tackle_knockback_speed": 3,
   "tackle_knockback_speed_sliding": 4,
@@ -22,5 +22,5 @@
   "ai_unmarked_radius": 40,
   "dome_bounce_speed": 8,
   "electrobounce_speed": 8,
-  "electrobounce_range": 16
+  "electrobounce_range": 15
 }

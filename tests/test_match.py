@@ -182,6 +182,10 @@ def test_star_bank_integration_via_tick():
 
 
 def test_electrobounce_integration_via_tick():
+    # REF Electrobounces.cs CheckHitOne snaps the ball to a same-side wall
+    # literal (wall_margin_ball, since the plate hit is left-of-center) and
+    # pushes it away from the wall -- not a cross-pitch teleport to the
+    # other plate.
     m = Match(CFG, seed=(9, 9))
     left, right = CFG.arena["electrobounces"]
     from sim.vec import Vec
@@ -190,7 +194,7 @@ def test_electrobounce_integration_via_tick():
     m.ball.held_by = None
     m.tick({})
     speed = CFG.physics["electrobounce_speed"]
-    assert m.ball.pos.x == right["pos"][0] - speed
+    assert m.ball.pos.x == CFG.arena["wall_margin_ball"] + speed
     assert m.furniture.electrobounce_flash_ticks == 1  # set to 2, ticked once
 
 
@@ -203,10 +207,10 @@ def test_electrobounce_does_not_ping_pong_across_ticks():
     m.ball.held_by = None
     for _ in range(20):
         m.tick({})
-    # A single crossing, not an infinite left<->right bounce: the ball
-    # should settle on the right side of the pitch, not oscillate back
-    # to the left plate's x.
-    assert m.ball.pos.x > (left["pos"][0] + right["pos"][0]) // 2
+    # A single push away from the wall, not an infinite re-trigger loop:
+    # the ball should end up clear of the left plate's hit range, not
+    # oscillating back into it every tick.
+    assert m.ball.pos.chebyshev(Vec(*left["pos"])) > CFG.physics["electrobounce_range"]
 
 
 def test_state_hash_reflects_furniture_state():

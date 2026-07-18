@@ -76,10 +76,24 @@ def check_electrobounces(ball: Ball, arena: dict, physics: dict,
     if furniture.electrobounce_cooldown:
         return False
     plate = in_range
-    other = next(p for p in plates if p is not plate)
+    # REF Electrobounces.cs CheckHitOne: contrary to this function's
+    # earlier design, the ball is *not* teleported to the opposite plate --
+    # its X is snapped to a same-side literal (wall_margin_ball if it was
+    # left of center, width - wall_margin_ball otherwise; REF's literal
+    # 32/608 matches those exactly for the corrected wall_margin_ball=32)
+    # and it's redirected by a direction vector computed from the plate
+    # toward the ball, plus a Bit3_IsTeam1_IsElectrobounced flag that flips
+    # team association in several REF AI/possession routines while the ball
+    # stays "charged." The direction-vector redirect and team-flip flag
+    # have no sim/ equivalent yet (no DirBits system) -- this still uses a
+    # simple away-from-the-wall push as a deliberate approximation; only
+    # the destination X and trigger geometry are REF-exact. Revisit when
+    # DirBits/electrobounce team-flip land.
     speed = physics["electrobounce_speed"]
-    push = -speed if plate["wall"] == "left" else speed
-    ball.pos = Vec(other["pos"][0], ball.pos.y)
+    push = speed if plate["wall"] == "left" else -speed
+    dest_x = (arena["wall_margin_ball"] if ball.pos.x <= arena["width"] // 2
+              else arena["width"] - arena["wall_margin_ball"])
+    ball.pos = Vec(dest_x, ball.pos.y)
     ball.vel = Vec(push, 0)
     ball.bounce_timer = 0
     furniture.electrobounce_flash_ticks = 2

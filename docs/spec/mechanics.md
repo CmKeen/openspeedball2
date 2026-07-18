@@ -136,15 +136,19 @@ is defined but currently **unused** in `sim/` — REF applies it when the
 *defender* is mid-jump, but `sim/` has no jump state on players yet (tracked
 in `docs/spec/ai-gap-analysis.md`).
 
-`player_base_speed`, `pass_speed`, `shot_speed`, `throw_bounce_timer`,
-`pickup_range`, `tackle_malus_sliding`, `tackle_malus_jumping`, and
+`pass_speed`, `shot_speed`, `throw_bounce_timer`, `pickup_range`,
+`tackle_malus_sliding`, `tackle_malus_jumping`, and
 `tackle_def_malus_by_delta_dir`'s exact magnitudes are still **[tunable —
 validate]** (REF itself carries these as unnamed decompiled constants, e.g.
 `_tackleUnk01`/`_tackleUnk02`, so the formula shape is confirmed but the
 numeric value isn't independently named in the source); `tackle_range`,
 `tackle_knockback_speed`, `tackle_knockback_speed_sliding`,
 `goalkeeper_def_multiplier_num`, and `goalkeeper_def_multiplier_den` are RE
-ground truth.
+ground truth. `player_base_speed`/`player_speed_tier_thresholds` are now RE
+ground truth too — extracted directly from the original disk image's
+velocity lookup table via `tools/extract_binary_constants.py`, confirming
+REF's 4-tier speed ladder (base 4, +1 per `spd` exceeding 140/170/200); see
+`docs/spec/ai-gap-analysis.md`.
 
 ## Match tick order
 
@@ -186,14 +190,19 @@ this document.
 Tunable keys currently pending validation, with their REF pointers:
 
 - `data/arena.json`: `goal_mouth_x_min`, `goal_mouth_x_max`, `goal_depth`,
-  `multiplier_banks` (all four rect bounds, both entries) — no specific REF
-  pointer recorded yet beyond the arena/entity source files; validate against
-  the original's collision boxes.
-- `data/physics.json`: `player_base_speed`, `pass_speed`, `shot_speed`,
-  `throw_bounce_timer`, `pickup_range`, `tackle_malus_sliding`,
-  `tackle_malus_jumping`, `tackle_def_malus_by_delta_dir` — REF:
+  `wall_margin_player`, `bounce_domes`, `electrobounces` positions, and
+  `star_banks` are now RE ground truth (source literals or disk-extracted;
+  see `docs/spec/ai-gap-analysis.md`). `wall_margin_ball` (24-vs-32 sprite-
+  state ambiguity), `multiplier_banks` (geometry corrected, directional-
+  entry/LED-counter mechanic still unported), and `kickoff_center` (plausible,
+  not independently checked) remain **[tunable — validate]**.
+- `data/physics.json`: `pass_speed`, `shot_speed`, `throw_bounce_timer`,
+  `pickup_range`, `tackle_malus_sliding`, `tackle_malus_jumping`,
+  `tackle_def_malus_by_delta_dir` — REF:
   `Player.cs sub_DE88_CalcBonusFromSpd`, `sub_EA62_CalcOpcodesTypeAndVelocityC`,
   `Match.GetTackleDefMalus`, `Match._tackleUnk01`/`_tackleUnk02`.
+  `player_base_speed`/`player_speed_tier_thresholds` and `electrobounce_range`
+  are now RE ground truth (see above).
 - `data/scoring.json`: `goal_points`, `goal_points_multiplied`,
   `multiplier_duration_ticks`, `leg_duration_ticks` — REF: `ScoreMultipliers.cs`,
   `Stars.cs`. Note: `leg_duration_ticks` (13500) is a placeholder derived from
