@@ -210,8 +210,16 @@ class Match:
             return
         if inp.action_b and p.sliding_ticks == 0 and p.falling_ticks == 0:
             p.sliding_ticks = phy["slide_ticks"]
-        if inp.action_a and holder is not None and holder.team != p.team:
-            attempt_tackle(p, [holder], self.ball, self.rng, phy)
+        if inp.action_a:
+            # REF sub_ED56_TackleCheckHit/sub_ED92_TackleCheckHit_Helper: a
+            # tackle attempt scans the *entire* opposing roster (in roster
+            # order) for the first player within tackle_range, independent
+            # of ball possession -- it is not restricted to the ball
+            # holder. attempt_tackle already implements the "first eligible
+            # candidate, one roll, stop" semantics; only the candidate list
+            # was too narrow here.
+            opponents = self.players_team2 if p.team == 1 else self.players_team1
+            attempt_tackle(p, opponents, self.ball, self.rng, phy)
 
     def _opp_goal_center(self, p: PlayerSim) -> Vec:
         arena = self.cfg.arena

@@ -76,6 +76,31 @@ def test_action_b_alone_does_not_attempt_tackle():
     assert m.ball.held_by is holder
 
 
+def test_action_a_can_tackle_a_nearby_opponent_not_holding_the_ball():
+    # REF sub_ED56_TackleCheckHit scans the whole opposing roster for anyone
+    # within tackle_range -- it is not gated on that opponent holding the
+    # ball. Put the ball far away (held by a third player) so only the
+    # off-ball proximity check can explain a successful tackle here.
+    from sim.vec import Vec
+
+    m = Match(CFG, seed=(11, 13))
+    holder = m.players_team2[0]
+    victim = m.players_team2[4]
+    tackler = m.players_team1[4]
+    holder.pos = Vec(320, 50)
+    m.ball.held_by = holder
+    victim.pos = Vec(330, 600)
+    tackler.pos = Vec(325, 600)
+
+    for _ in range(50):
+        m.tick({player_id(1, 4): InputState(action_a=True)})
+        if victim.falling_ticks > 0:
+            break
+
+    assert victim.falling_ticks > 0
+    assert m.ball.held_by is holder  # tackle target was off-ball; possession untouched
+
+
 def test_kickoff_possession_pins_ball_to_holder():
     from sim.vec import Vec
 

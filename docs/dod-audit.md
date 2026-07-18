@@ -46,3 +46,23 @@ comparison (AI-only vs. AI+scripted-human).
 Still open, unchanged by the final-review pass (out of its stated scope):
 see `docs/spec/mechanics.md`'s "Known hardcoded exceptions" subsection
 for the current list and file/line pointers.
+
+## AI-fidelity gap-analysis pass (2026-07-18)
+
+Systematic function-by-function comparison of REF `Player.cs`'s tackle and
+AI-dispatch subroutines against `sim/`, recorded in
+`docs/spec/ai-gap-analysis.md`. Found and fixed one real behavioral bug:
+`Match._resolve_action` only ever let a player tackle the current ball
+*holder*, whereas REF's `sub_ED56_TackleCheckHit` scans the whole opposing
+roster for any player within `tackle_range`, independent of possession.
+Broadened the candidate list in `sim/match.py`; added
+`tests/test_match.py::test_action_a_can_tackle_a_nearby_opponent_not_holding_the_ball`.
+
+Re-ran the 2026-07-13/14 audit's headless smoke check (`Match.tick_with_ai()`,
+seed `(5, 5)`, `SDL_VIDEODRIVER=dummy`) after the fix: 2000 ticks now produce
+a 0–0 score (vs. the earlier 50–0 team-2 rout); extending to 5000 ticks
+produces 0–2 with 370 possession changes — a materially less lopsided result,
+consistent with off-ball tackling now interrupting one-sided possession runs.
+This is a positive signal, not a full validation; the top-level AI dispatch
+(`sub_D742_AII`) itself still diverges from REF and is the next highest-
+priority item per `docs/spec/ai-gap-analysis.md`.

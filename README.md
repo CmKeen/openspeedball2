@@ -73,7 +73,13 @@ In priority order, each a future plan of its own:
 
 1. **AI fidelity**: translate REF `Player.cs` think-dispatch behaviors one
    function at a time, validated frame-by-frame against
-   `bin/Speedball 2.exe` with matched seeds.
+   `bin/Speedball 2.exe` with matched seeds. In progress via static source
+   comparison (no .NET toolchain is installed to build/trace the REF exe
+   here): see `docs/spec/ai-gap-analysis.md` for the sub-by-sub map and
+   status. First pass (2026-07-18) fixed tackling to target any nearby
+   opponent, not just the ball holder (REF `sub_ED56_TackleCheckHit` has no
+   possession gate); the top-level AI dispatch (`sub_D742_AII`) is surveyed
+   but not yet ported — it's the next highest-priority item.
 2. **Arena furniture**: tier 1 (stars, bounce domes, electrobounces) is
    implemented — sim logic, data-driven placement (marked `[tunable —
    validate]` in `data/arena.json` pending frame-trace validation), and

@@ -72,8 +72,14 @@ from the default seed.
 
 ## Tackle
 
-A tackle is only attempted within `tackle_range` (30 units) of the ball
-carrier. Success is decided by rolling a random byte from the RNG against a
+A tackle is attempted against the first eligible opposing player (in roster
+order) within `tackle_range` (30 units) of the attacker — **not** only the
+ball carrier; any nearby opponent, on the ball or off it, can be knocked
+down. (This was previously modeled as ball-carrier-only in `sim/`; fixed to
+match REF `Player.cs sub_ED56_TackleCheckHit`/`sub_ED92_TackleCheckHit_Helper`,
+which scan the whole opposing roster with no possession check at all — see
+`docs/spec/ai-gap-analysis.md`.) Success is decided by rolling a random byte
+from the RNG against a
 threshold of `(attacker.att + 256 - def_eff) / 2`, where `def_eff` starts as
 the defender's raw `def` stat. If the defender is the goalkeeper, `def_eff` is
 scaled up by `goalkeeper_def_multiplier_num / goalkeeper_def_multiplier_den`
@@ -93,11 +99,20 @@ defender's health, and half that value (minimum 1) is also subtracted from all
 eight of the defender's stats, representing cumulative wear from repeated
 punishment. Possession of the ball transfers to the tackler, unless the
 tackler is also in a falling/diving state, in which case the ball is loose.
-REF: `Player.cs` tackle routines.
+REF: `Player.cs sub_ED56_TackleCheckHit`, `sub_EE9C_CalcTackleProbability`,
+`sub_EEFC_HitByTackle`. The overall formula shapes (which terms are added,
+subtracted, or capped, and in what order) for tackle probability and damage
+are confirmed against that source read function-by-function; `tackle_malus_jumping`
+is defined but currently **unused** in `sim/` — REF applies it when the
+*defender* is mid-jump, but `sim/` has no jump state on players yet (tracked
+in `docs/spec/ai-gap-analysis.md`).
 
 `player_base_speed`, `pass_speed`, `shot_speed`, `throw_bounce_timer`,
 `pickup_range`, `tackle_malus_sliding`, `tackle_malus_jumping`, and
-`tackle_def_malus_by_delta_dir` are all **[tunable — validate]**; `tackle_range`,
+`tackle_def_malus_by_delta_dir`'s exact magnitudes are still **[tunable —
+validate]** (REF itself carries these as unnamed decompiled constants, e.g.
+`_tackleUnk01`/`_tackleUnk02`, so the formula shape is confirmed but the
+numeric value isn't independently named in the source); `tackle_range`,
 `tackle_knockback_speed`, `tackle_knockback_speed_sliding`,
 `goalkeeper_def_multiplier_num`, and `goalkeeper_def_multiplier_den` are RE
 ground truth.
