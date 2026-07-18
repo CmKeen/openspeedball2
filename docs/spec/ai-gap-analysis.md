@@ -121,6 +121,38 @@ multiplier" model. The rectangle position is now correct; the trigger
 mechanic itself is a separate, larger follow-up (new "directional entry"
 concept, no `sim/` equivalent yet).
 
+## Player movement speed tiers — structure known, values blocked on binary data
+
+REF's regular-movement velocity (e.g. `Player.cs` 1580–1593, 1615–1626,
+1745–1750) is not a flat base+bonus like `sim/player.py::speed_of`
+(`player_base_speed` + 1 if `spd >= player_speed_bonus_threshold`, i.e. two
+tiers). It's a 4-tier ladder: velocity index 4 as the floor, +1 if
+`spd > Match.SpeedMaxForVelocity4` (140), +1 more if `spd > SpeedMaxForVelocity5`
+(170), +1 more if `spd > SpeedMaxForVelocity6` (200) — so the fastest
+players (velocity index 7) move noticeably faster than a merely-above-
+average player (index 5), a gradient `sim/` currently flattens to a single
+binary fast/slow split. The thresholds (140/170/200) are confirmed RE
+ground truth (named constants in `Match.cs`), but the *velocity index →
+actual XY speed* mapping is not: `Match.GetVelocityXYFromDir(dir, velocity)`
+reads it from a lookup table baked into the original Atari disk image
+(`Game.AtariDisk` at a computed offset), not from any literal in the
+decompiled source. Same class of blocker as `bounce_domes`/`electrobounces`
+positions above: the *shape* of the fix is known, the *numbers* require
+decoding binary game data this repo doesn't ship (see `README.md`'s asset
+policy), not more source reading. Flagged **[tunable — validate]**,
+unresolved.
+
+This is the third item this pass to hit the same wall (REF's disk-resident
+lookup tables), after arena furniture positions and now movement speed.
+`sim/ai.py`'s existing `_CFWD_SUPPORT_LOOKUP`/`_WING_SUPPORT_LOOKUP` tables
+show this data *can* be extracted (someone did it for those two tables
+already); the repo's `tools/extract_assets.py`/`crop_amiga_sprites.py`/
+`dos_pc1_decode.py` pipeline and the raw `Resources/`/`abandonware/` game
+dumps are the likely path to unlocking the rest, but that's a data-
+extraction project, not a source-reading one — out of scope for a static
+comparison pass. Worth flagging to the user as the next real force-
+multiplier: several blocked items here would resolve at once.
+
 ## Not yet surveyed (future pass starting points)
 
 `Entity.cs` beyond the wall/bounce/friction routines already covered in
