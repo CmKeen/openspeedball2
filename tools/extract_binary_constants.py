@@ -29,6 +29,17 @@ initialDir/pos/stat bytes at RAM 0x40A6/0x412A) against known-sane values
 (uniform stat=100 default roster, health=128, team1/team2 facing opposite
 initial directions, structured position codes 0..4) before trusting the
 address math for anything else -- see docs/spec/ai-gap-analysis.md.
+
+NOTE on Amiga vs. Atari: this project's standing preference is that the
+Amiga version is the master reference when platforms disagree. This tool
+is necessarily Atari-sourced -- REF's own gameplay simulation code
+(Game.cs/Match.cs/Player.cs/Entity.cs) reads every constant exclusively
+from Game.AtariDisk; Game.AmigaDisk exists in that project but is used
+only for sprite/graphics rendering, never gameplay data, so there is no
+Amiga-sourced equivalent of this address math to cross-check against.
+Treat everything this prints as provisional against an Amiga original,
+not as confirmed master data -- see docs/spec/ai-gap-analysis.md's
+"Amiga vs. Atari master-version note".
 """
 from __future__ import annotations
 
@@ -86,6 +97,24 @@ def read_player_roster(data: bytes, ram_base: int) -> list[dict[str, int]]:
     return roster
 
 
+# Player struct (GameClasses/Player.cs constructor): starts with the 0x28
+# (40) byte Entity struct, then _distanceToBall(2) + _targetXY(4) +
+# _launchXY(4) + _zoneCenterXY(4), then _zoneXY1/_zoneXY2 interleaved as
+# X1,X2,Y1,Y2 (8 bytes total). Player.Size = 0x72.
+_PLAYER_SIZE = 0x72
+_ZONE_OFFSET = 40 + 2 + 4 + 4 + 4  # = 54
+
+
+def read_player_zones(data: bytes, ram_base: int) -> list[dict[str, tuple[int, int]]]:
+    zones = []
+    for i in range(9):
+        off = ram_to_disk(ram_base + i * _PLAYER_SIZE) + _ZONE_OFFSET
+        z1 = (read_word(data, off), read_word(data, off + 4))
+        z2 = (read_word(data, off + 2), read_word(data, off + 6))
+        zones.append({"zone1": z1, "zone2": z2})
+    return zones
+
+
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
     disk_path = Path(argv[0]) if argv else DEFAULT_DISK
@@ -109,6 +138,15 @@ def main(argv: list[str] | None = None) -> int:
     print("\n=== electrobounce plate positions (arena.json electrobounces) ===")
     print("left  (RAM 0x4B5E):", read_entity_terrain_xy(data, 0x4B5E))
     print("right (RAM 0x4B88):", read_entity_terrain_xy(data, 0x4B88))
+
+    print("\n=== per-player AI zone rectangles (Player.cs _zoneXY1/_zoneXY2) ===")
+    print("prerequisite data for porting sub_D742_AII; roster index order")
+    print("matches read_player_roster's pos codes above (0 GK,1 DEF,2 DEF,")
+    print("3-5 MID,6-7 WING,8 CFWD)")
+    for label, base in (("team1", 0x4BB2), ("team2", 0x4FB4)):
+        print(label)
+        for i, z in enumerate(read_player_zones(data, base)):
+            print(f"  {i}: {z}")
 
     print("\n=== velocity table (dir 0..7 columns, velocity 0..8 rows) ===")
     print("dir:    0=up 1=up-right 2=right 3=down-right 4=down "

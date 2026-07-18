@@ -1,0 +1,25 @@
+{
+  "_comment": "Per-player AI patrol-zone rectangles, extracted verbatim from the original disk image's roster data (Player.cs _zoneXY1/_zoneXY2, RAM 0x4BB2 team1 / 0x4FB4 team2, via tools/extract_binary_constants.py). Not yet consumed by sim/ -- staged as the prerequisite data for porting REF's sub_D742_AII AI dispatch (see docs/spec/ai-gap-analysis.md), which also needs a DirBits-equivalent representation before it can use this. Roster index order matches data/teams.json's player order: 0 GK, 1-2 DEF, 3-5 MID, 6-7 WING, 8 CFWD. NOTE: Atari-sourced (REF's gameplay code has no Amiga-data path); this project's standing preference is Amiga-as-master when platforms disagree -- treat as provisional, not confirmed, until cross-checked. See docs/spec/ai-gap-analysis.md's 'Amiga vs. Atari master-version note'.",
+  "team1": [
+    { "zone1": [160, 960], "zone2": [480, 1104] },
+    { "zone1": [32, 768],  "zone2": [320, 1104] },
+    { "zone1": [320, 768], "zone2": [608, 1104] },
+    { "zone1": [32, 384],  "zone2": [213, 768] },
+    { "zone1": [426, 384], "zone2": [608, 768] },
+    { "zone1": [213, 384], "zone2": [426, 768] },
+    { "zone1": [32, 48],   "zone2": [213, 384] },
+    { "zone1": [426, 48],  "zone2": [608, 384] },
+    { "zone1": [213, 48],  "zone2": [426, 384] }
+  ],
+  "team2": [
+    { "zone1": [160, 48],  "zone2": [480, 192] },
+    { "zone1": [320, 48],  "zone2": [608, 384] },
+    { "zone1": [32, 48],   "zone2": [320, 384] },
+    { "zone1": [426, 384], "zone2": [608, 768] },
+    { "zone1": [32, 384],  "zone2": [213, 768] },
+    { "zone1": [213, 384], "zone2": [426, 768] },
+    { "zone1": [426, 768], "zone2": [608, 1104] },
+    { "zone1": [32, 768],  "zone2": [213, 1104] },
+    { "zone1": [213, 768], "zone2": [426, 1104] }
+  ]
+}

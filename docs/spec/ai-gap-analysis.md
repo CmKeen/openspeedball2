@@ -26,6 +26,21 @@ the next high-impact **Diverges**/**Missing** row.
 |---|---|---|---|
 | `sub_D742_AII` (master per-tick AI dispatch for a non-human-controlled player) | 406–516 | `sim/ai.py::_decide` | **Diverges — largest remaining gap, deferred.** REF's dispatch is materially different from `_decide`'s simplified "closest-2-chase / support / defend / carry" tree: it branches on aggression-stat dice rolls (`_agr/2 > _random`) to decide between direct ball-pursuit and a computed `_targetXY`, applies an onscreen-margin check, computes two nearest-opponent direction bits (`sub_D902`) and threads them through further sub-dispatches (`sub_DCCC`, `sub_DA86`/`sub_DB32` direction-bit comparisons) to choose between "run to target" (`sub_EB7A`) and position-dependent pass/hold logic (`sub_DBE8` for defenders/GK, `sub_DF2E` for attackers — both of which *are* already ported into `sim/ai.py`'s `_choose_pass_target`/`decide_carry` per their inline REF citations). It also folds in item/token avoidance (`sub_D97E_AII_Items`/`sub_D9DC_AII`) which is out of scope until tokens exist. **This sub was read in full this pass but not ported**: the branch structure is intricate enough (8+ nested conditions, decompiler-named `DirBits`/`_zoneCenterXY`/`_zoneXY1`/`_zoneXY2` fields with no `sim/` equivalent representation yet) that a rushed port risks a wrong translation being worse than the current honest approximation. Recommended next step for a future pass: introduce a `DirBits`-equivalent (two-nearest-opponent direction pair) and `zoneXY1`/`zoneXY2` fields on `PlayerSim`/formation data, then translate `sub_D742_AII` as a single dedicated pass with its own frame-by-frame test scenarios (not bundled with an unrelated fix). |
 | `sub_D902` (two-nearest-opponent direction-bit pair, feeds the dispatch above) | 518–548 | none | **Missing** — prerequisite for `sub_D742_AII` above. |
+
+**Update**: one of `sub_D742_AII`'s two prerequisites is now unblocked.
+`data/formations.json` (new) holds the real per-player `_zoneXY1`/`_zoneXY2`
+patrol rectangles, extracted from the disk image the same way as the other
+binary constants above (`tools/extract_binary_constants.py`) — clean,
+structured, position-shaped data (e.g. team1's two wingers get mirrored
+left/right zones in the attacking third, the center-forward gets a centered
+zone between them, matching the `pos=3` vs `pos=4` attribute distinction
+found in the same extraction pass). Not yet wired into `sim/` — `PlayerSim`
+has no zone fields and nothing reads this file yet — staged for whenever
+`sub_D742_AII` gets its dedicated pass. The **other** prerequisite, a
+`DirBits`-equivalent (two-nearest-opponent direction-bit representation,
+`sub_D902` above), is still unbuilt and still the harder half: it threads
+through direction comparisons (`sub_DA86`/`sub_DB32`) that assume an 8-way
+bitmask notion of "direction" our `Vec`/`dir_towards` model doesn't have.
 | `sub_E61A_GoalUnk` | 1332–1485 | `decide_goalkeeper` (`sim/ai.py`) | **Diverges (partially ported, documented approximation)** — see the inline "Amiga REF sub_E61A_GoalUnk()" comment already in `sim/ai.py`; the loose-ball-lunge and goal-line-locked predicted-lane logic are ported, but this is REF's largest sub (120+ lines) covering additional goalkeeper animation/state transitions not modeled since `sim/` has no animation opcode system. |
 | `sub_DBE8`, `sub_DF2E`, `sub_E05C`, `sub_E382`, `sub_E218`, `sub_F364`, `sub_CEEA_InitGoalerAnim` (anim-state part), `get_predicted_ball_position_for_goalie` | various | `_choose_pass_target`, `decide_team_support`, `_attacker_lookup_target`, `_predicted_target`, `_goalie_predicted_target` (`sim/ai.py`) | **Equivalent or documented-approximation** — already ported with inline REF citations in `sim/ai.py`; verified consistent with the source read this pass. No change needed. |
 
@@ -120,6 +135,24 @@ different from `sim/scoring.py check_multiplier_banks`'s current
 multiplier" model. The rectangle position is now correct; the trigger
 mechanic itself is a separate, larger follow-up (new "directional entry"
 concept, no `sim/` equivalent yet).
+
+## Amiga vs. Atari master-version note
+
+The user's standing preference: when Speedball 2 reference material across
+platforms disagrees, **the Amiga version is master**. The binary-data
+extraction below is necessarily **Atari-sourced**: REF's own gameplay
+simulation code (`Game.cs`, `Match.cs`, `Player.cs`, `Entity.cs`) reads
+constants exclusively from `Game.AtariDisk` — there is no
+`AmigaRamToDisk`/Amiga gameplay-data path in that project at all;
+`Game.AmigaDisk` is used only for sprite/graphics/palette rendering there
+(`SpriteManager`, `Stars.cs Draw`, `Field.cs`, `Entity.cs` animation). So
+every constant extracted this pass (velocity table, furniture positions,
+AI zone rectangles) is provisional against an Amiga original, not because
+of any specific reason to doubt it, but because it was never actually
+cross-checked against one — REF simply doesn't offer that path. Treat as
+correct-until-shown-otherwise, not as confirmed-master. Visual/sprite
+extraction already follows the Amiga-preferred convention
+(`tools/crop_amiga_sprites.py`, `assets/amiga_extracted/`).
 
 ## Binary-data-blocked items — resolved via `tools/extract_binary_constants.py`
 
