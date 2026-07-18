@@ -78,6 +78,49 @@ actually happening at a normal-feeling rate instead of a near-scoreless
 stalemate; the balance itself (team 2 favored 3:1) is not yet validated
 against REF and is a candidate for the next pass once `sub_D742_AII` lands.
 
+## Arena furniture geometry (`ScoreMultipliers.cs`, `Stars.cs`) — this pass
+
+`data/arena.json`'s `multiplier_banks` and `star_banks` rectangles were
+placed near each team's own goal line, entirely wrong: REF's
+`ScoreMultipliers.cs CheckEnter` and `Stars.cs CheckHit` put both pairs on
+the *side walls near mid-pitch*, not near the goals.
+
+| Bank | Was | Now | REF source |
+|---|---|---|---|
+| `multiplier_banks[0]` (left) | x 0–24, y 384–480 | x **24–64**, y **576–640** | `ScoreMultipliers.cs CheckEnter`: outer gate `X<24 \|\| X>616 → return`; left branch `X<64`, `d2=576,d3=640`. |
+| `multiplier_banks[1]` (right) | x 616–640, y 672–768 | x **576–616**, y **512–576** | Same method, right branch `X>576`, `d2=512,d3=576`. |
+| `star_banks[0]` (team 1, left) | x 0–24, y 160–320 | x **0–32**, y **384–544** | `Stars.cs CheckHit`: `X<=32`, `Y` in `[384,544)` (5 bands of 32). |
+| `star_banks[1]` (team 2, right) | x 616–640, y 832–992 | x **608–640**, y **608–768** | Same method, `X>=608`, `Y` in `[608,768)`. |
+
+Verified safe to change: every test that exercises these banks
+(`tests/test_scoring.py`, `tests/test_furniture.py`, `tests/test_match.py`)
+derives its ball positions from `CFG.arena[...]` at test time rather than
+hardcoding literal coordinates, so none needed updating.
+
+**Not fixed, and not fixable from source alone this pass**: `bounce_domes`
+and `electrobounces` positions. Unlike the banks above, REF constructs
+`BounceDomes`/`Electrobounces`' entities directly from decoded Atari-disk
+byte offsets (`new Entity(Game.AtariDisk, Game.AtariRamToDisk(0x4B0A))` etc.)
+rather than literal X/Y constants in `Player.cs`/`Match.cs`-adjacent source
+— their real positions live in binary game data this repo doesn't ship
+(see `README.md`'s asset policy) and would need either a real disk image
+run through `Game.AtariRamToDisk`'s address translation, or the equivalent
+Amiga data, to extract. `data/arena.json`'s current dome/electrobounce
+`pos` values remain unverified placeholder guesses — flagged
+**[tunable — validate]**, blocked on data extraction rather than a source
+read.
+
+Also unresolved this pass: `ScoreMultipliers.cs`'s actual entry mechanic is
+a *directional pocket* (only a ball moving straight up/down within a few
+units of the bank's inner edge "enters" and lights the LED counter;
+anything else just bounces off it like a wall) and a **2-hit LED counter**
+per team (`UpdateLeds`) rather than a flat on/off duration flag — materially
+different from `sim/scoring.py check_multiplier_banks`'s current
+"any entry within the rect immediately activates a flat-duration
+multiplier" model. The rectangle position is now correct; the trigger
+mechanic itself is a separate, larger follow-up (new "directional entry"
+concept, no `sim/` equivalent yet).
+
 ## Not yet surveyed (future pass starting points)
 
 `Entity.cs` beyond the wall/bounce/friction routines already covered in

@@ -45,9 +45,20 @@ margin above — the goal mouth is simply the gap left open in that wall band
 across the `goal_mouth_x_min..x_max` columns, so the two constants are the
 same physical boundary and must match. `kickoff_center` ([320, 576]) is where
 the ball is placed to restart play — plausible (pitch center) but not
-independently verified against REF this pass. The two `multiplier_banks`
-rectangles remain **[tunable — validate]** — not checked against REF's
-`ScoreMultipliers.cs` this pass.
+independently verified against REF this pass.
+
+`multiplier_banks` and `star_banks` are **corrected this pass**: both were
+previously placed near each team's own goal line, which is wrong — REF's
+`ScoreMultipliers.cs CheckEnter` and `Stars.cs CheckHit` put both pairs on
+the side walls near mid-pitch (multiplier banks straddling the vertical
+center at y≈512–640; star banks at y 384–544/608–768). See
+`docs/spec/ai-gap-analysis.md`'s "Arena furniture geometry" section for the
+full REF citation and the still-open gaps: `bounce_domes`/`electrobounces`
+positions can't be verified from source alone (REF loads them from decoded
+disk-image byte offsets, not literal constants) and remain
+**[tunable — validate]**; the multiplier bank's directional-entry-pocket +
+2-hit LED-counter mechanic is materially different from `sim/scoring.py`'s
+current flat area-trigger model and is unported.
 
 ## Ball friction
 
