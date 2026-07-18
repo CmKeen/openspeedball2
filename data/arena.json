@@ -1,11 +1,11 @@
 {
   "width": 640,
   "height": 1152,
-  "wall_margin_ball": 16,
-  "wall_margin_player": 16,
+  "wall_margin_ball": 32,
+  "wall_margin_player": 48,
   "goal_mouth_x_min": 272,
   "goal_mouth_x_max": 368,
-  "goal_depth": 16,
+  "goal_depth": 32,
   "kickoff_center": [320, 576],
   "multiplier_banks": [
     { "team_side": 1, "x_min": 0,   "x_max": 24,  "y_min": 384, "y_max": 480 },

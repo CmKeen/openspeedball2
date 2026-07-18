@@ -29,6 +29,55 @@ the next high-impact **Diverges**/**Missing** row.
 | `sub_E61A_GoalUnk` | 1332–1485 | `decide_goalkeeper` (`sim/ai.py`) | **Diverges (partially ported, documented approximation)** — see the inline "Amiga REF sub_E61A_GoalUnk()" comment already in `sim/ai.py`; the loose-ball-lunge and goal-line-locked predicted-lane logic are ported, but this is REF's largest sub (120+ lines) covering additional goalkeeper animation/state transitions not modeled since `sim/` has no animation opcode system. |
 | `sub_DBE8`, `sub_DF2E`, `sub_E05C`, `sub_E382`, `sub_E218`, `sub_F364`, `sub_CEEA_InitGoalerAnim` (anim-state part), `get_predicted_ball_position_for_goalie` | various | `_choose_pass_target`, `decide_team_support`, `_attacker_lookup_target`, `_predicted_target`, `_goalie_predicted_target` (`sim/ai.py`) | **Equivalent or documented-approximation** — already ported with inline REF citations in `sim/ai.py`; verified consistent with the source read this pass. No change needed. |
 
+## Reactive tackling (`sub_E854`, `Player.cs` 1508–1560) — surveyed, blocked on an architecture conflict
+
+REF's `sub_D742_AII` calls `sub_E854` first, before any of the dispatch
+above, for any player not currently holding the ball: it scans the *entire*
+opposing roster for anyone within `tackle_range` and, if found, auto-attacks
+them when the player is a goalkeeper, that opponent holds the ball, or a
+per-tick aggression-stat dice roll (`_attributes._agr > _random`) succeeds —
+where `_random` is one `NextByte()` rolled **unconditionally, once per
+player per tick**, at the very top of `sub_D742_AII` (line 409), regardless
+of whether a candidate is even found nearby.
+
+This is a real, well-understood, self-contained piece of REF's AI (unlike
+`sub_D742_AII`'s main body it needs no zone data), but porting it faithfully
+means every non-ball-holding AI player consumes one RNG byte every tick,
+unconditionally. That directly conflicts with a deliberate design decision
+already encoded in `tests/test_ai.py::test_carry_roll_fires_only_in_shot_range`,
+which asserts `compute_ai_inputs` leaves the RNG stream untouched when no
+AI decision actually needs a roll (i.e. today's `sim/ai.py` economizes RNG
+consumption — it only rolls when a choice is actually contested, not on a
+fixed per-player-per-tick cadence). Adopting REF's cadence is a legitimate
+option but is a cross-cutting change to the AI module's RNG-consumption
+philosophy, not a local fix, and would need the existing test's intent
+revisited deliberately rather than incidentally broken by an unrelated
+change. Deferred; flagged here as a **Missing** item requiring a scoped
+design decision before implementation, not a straightforward port.
+
+## Arena/goal geometry corrections (`Entity.cs`, `Match.cs`) — this pass
+
+Not part of the `Player.cs` AI survey above, but found while chasing why
+`goal_depth` felt inconsistent with REF's actual `CheckGoal` while reading
+adjacent code:
+
+| Constant | Was | Now | REF source |
+|---|---|---|---|
+| `wall_margin_player` | 16 | **48** | `Match.cs MoveBallPlayersMedicsHandleWallsAndBounce`: `player.MoveAndHandleWallsAndBounce(48)` for every player/medic. Unambiguous. |
+| `wall_margin_ball` | 16 | **32** (still `[tunable — validate]` for the 24-vs-32 split below) | Same call site: ball margin is `24`, bumped to `32` when `_entityBall._spriteIndex <= 2` (its normal in-flight sprite range). `sim/` has no ball-sprite-index state to pick between the two, so `32` was chosen as the closer default. |
+| `goal_depth` | 16 | **32** | `Match.cs CheckGoal`: goal awarded when `_terrainXY.Y < 32` (top) / `> 1120` i.e. `height - 32` (bottom) — the same 32-unit band as the corrected ball wall margin (the goal mouth is the gap left open in that wall band across `goal_mouth_x_min..x_max`). |
+
+`goal_mouth_x_min`/`goal_mouth_x_max` (272/368) were independently confirmed
+correct against `CheckGoal`'s literals — no change needed there.
+`multiplier_banks` remain unchecked against `ScoreMultipliers.cs` this pass.
+
+Re-ran the headless smoke check after this fix (on top of the tackle fix
+above): 5000 ticks, seed `(5, 5)` → score 12–38, 416 possession changes (vs.
+0–2/370 with only the tackle fix, and the original 50–0 rout). Goals are now
+actually happening at a normal-feeling rate instead of a near-scoreless
+stalemate; the balance itself (team 2 favored 3:1) is not yet validated
+against REF and is a candidate for the next pass once `sub_D742_AII` lands.
+
 ## Not yet surveyed (future pass starting points)
 
 `Entity.cs` beyond the wall/bounce/friction routines already covered in

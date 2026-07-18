@@ -13,8 +13,20 @@ other value listed here is already confirmed against the RE source.
 The pitch is a fixed 640×1152 rectangle in integer "terrain units" (`data/arena.json`
 `width`/`height`), with (0, 0) at the top-left corner and Y increasing downward.
 Every entity — ball and players alike — is clamped to `[margin, limit - margin]`
-on each axis, where `margin` is `wall_margin_ball` (16) for the ball and
-`wall_margin_player` (16) for players. When the ball reaches a wall it doesn't
+on each axis, where `margin` is `wall_margin_ball` (32) for the ball and
+`wall_margin_player` (48) for players. **Corrected this pass** (previously 16
+for both, mislabeled RE ground truth without having actually been checked
+against the call sites): REF's `Match.MoveBallPlayersMedicsHandleWallsAndBounce`
+calls `Entity.MoveAndHandleWallsAndBounce(margin)` with `margin = 48` for every
+player/medic, and `margin = 24` for the ball, bumped to `32` whenever the
+ball's `_spriteIndex <= 2` (its normal in-flight sprite range — the same
+range `CheckGoal` and `Player.cs sub_D672` gate on before treating the ball
+as "in open play"). Since our sim has no equivalent ball-sprite-index state
+to distinguish the 24-vs-32 cases, `wall_margin_ball` is set to the `32`
+branch as the closer default (the ball is normally in that sprite range
+during free flight) — still **[tunable — validate]** for the 24-vs-32
+distinction specifically, but no longer using the unsupported `16`. `wall_margin_player`
+(48) is unambiguous RE ground truth. When the ball reaches a wall it doesn't
 just stop: its velocity component on that axis is reflected (negated) and its
 direction is mirrored through `mirror_dir_x`/`mirror_dir_y` so its facing/travel
 direction flips consistently with the bounce. A bounce off a Y-wall (top or
@@ -24,12 +36,18 @@ reflect velocity, mirror direction, adjust the bounce timer — is one routine i
 the original game. REF: `Entity.cs MoveAndHandleWallsAndBounce`.
 
 The goal mouth is the horizontal span `goal_mouth_x_min`..`goal_mouth_x_max`
-(272..368) cut into the north and south walls, `goal_depth` (16) units deep;
-`kickoff_center` ([320, 576]) is where the ball is placed to restart play. Both
-the goal mouth rectangle and the two `multiplier_banks` rectangles are
-**[tunable — validate]** — the pitch dimensions and wall margins are RE ground
-truth, but the exact goal and bank boxes still need to be checked against the
-original's collision boxes.
+(272..368) cut into the north and south walls — RE ground truth, confirmed
+byte-for-byte against `Match.cs CheckGoal`'s `_terrainXY.X < 272` /
+`> 368` literals. `goal_depth` is **corrected this pass** from 16 to 32: `CheckGoal`
+tests `_terrainXY.Y < 32` (top) / `> 1120` (i.e. `height - 32`, bottom) before
+awarding a goal, which is the *same* 32-unit band as the ball's wall-bounce
+margin above — the goal mouth is simply the gap left open in that wall band
+across the `goal_mouth_x_min..x_max` columns, so the two constants are the
+same physical boundary and must match. `kickoff_center` ([320, 576]) is where
+the ball is placed to restart play — plausible (pitch center) but not
+independently verified against REF this pass. The two `multiplier_banks`
+rectangles remain **[tunable — validate]** — not checked against REF's
+`ScoreMultipliers.cs` this pass.
 
 ## Ball friction
 

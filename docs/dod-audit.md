@@ -66,3 +66,15 @@ consistent with off-ball tackling now interrupting one-sided possession runs.
 This is a positive signal, not a full validation; the top-level AI dispatch
 (`sub_D742_AII`) itself still diverges from REF and is the next highest-
 priority item per `docs/spec/ai-gap-analysis.md`.
+
+Continuing the same pass, also found and fixed `wall_margin_player` (16→48)
+and `goal_depth` (16→32) in `data/arena.json`, both previously mislabeled
+"RE ground truth" in `docs/spec/mechanics.md` without actually having been
+checked against REF's call sites; `wall_margin_ball` moved from an
+unsupported 16 to 32 (still flagged tunable — REF's real value is
+sprite-state-conditional between 24 and 32, which `sim/` can't currently
+distinguish). Re-ran the same smoke check after this fix: 5000 ticks now
+produce a 12–38 score with 416 possession changes — goals are happening at
+a normal-feeling rate rather than a near-scoreless stalemate. See
+`docs/spec/ai-gap-analysis.md`'s "Arena/goal geometry corrections" section
+for the full citation trail.
